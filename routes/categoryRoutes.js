@@ -25,5 +25,5 @@ router.put('/:id', protect, admin, updateCategory);
 // Delete category (admin only)
 router.delete('/:id', protect, admin, deleteCategory);
 
-export default router;
+export default router
 
