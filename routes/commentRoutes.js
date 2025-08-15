@@ -1,11 +1,26 @@
 import express from "express";
-import { addComment, deleteComment } from "../controllers/commentController.js";
-import protect from "../middleware/authMiddleware.js";
+import {
+  createComment,
+  getCommentsByPost,
+  updateComment,
+  deleteComment,
+} from "../controllers/commentController.js";
+import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", protect, addComment);
+// Public: view all comments for a post
+router.get("/:postId", getCommentsByPost);
+
+// Logged-in: add comment
+router.post("/", protect, createComment);
+
+// Logged-in (owner only): update/delete comment
+router.put("/:id", protect, updateComment);
 router.delete("/:id", protect, deleteComment);
 
 export default router;
+
+
+
 

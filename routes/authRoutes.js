@@ -1,18 +1,20 @@
 import express from "express";
+import { registerUser, loginUser, deleteUser  } from "../controllers/authController.js";
+import { protect, admin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// POST /api/auth/register
-router.post("/register", (req, res) => {
-  res.send("Register route working");
-});
+// Public routes
+router.post("/register", registerUser);
+router.post("/login", loginUser);
 
-// POST /api/auth/login
-router.post("/login", (req, res) => {
-  res.send("Login route working");
-});
+// Admin only: delete user + their comments
+router.delete("/:id", protect, admin, deleteUser);
 
 export default router;
+
+
+
 
 
 

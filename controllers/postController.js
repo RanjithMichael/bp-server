@@ -1,68 +1,68 @@
-import Post from "../models/Post.js";
+import Post from "../models/post.js";
 
-// @desc    Create new post
-export const createPost = async (req, res) => {
+// Create a new post
+export const createPost = async (req, res, next) => {
   try {
+    const { title, content, category, tags } = req.body;
+
     const post = await Post.create({
-      ...req.body,
-      author: req.user._id,
+      title,
+      content,
+      category,
+      tags,
+      author: req.user.id, // assuming auth middleware sets req.user
     });
-    res.status(201).json(post);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+
+    res.status(201).json({ message: "Post created successfully", post });
+  } catch (error) {
+    next(error);
   }
 };
 
-// @desc    Get all published posts
-export const getAllPosts = async (req, res) => {
+// Get all posts
+export const getPosts = async (req, res, next) => {
   try {
-    const posts = await Post.find({ status: "published" }).populate("author", "name");
+    const posts = await Post.find().populate("author", "name email");
     res.json(posts);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-// @desc    Get single post
-export const getPostById = async (req, res) => {
+// Get single post by ID
+export const getPostById = async (req, res, next) => {
   try {
-    const post = await Post.findById(req.params.id).populate("author", "name");
+    const post = await Post.findById(req.params.id).populate(
+      "author",
+      "name email"
+    );
     if (!post) return res.status(404).json({ message: "Post not found" });
     res.json(post);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-// @desc    Update post
-export const updatePost = async (req, res) => {
+// Update post
+export const updatePost = async (req, res, next) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
     if (!post) return res.status(404).json({ message: "Post not found" });
-
-    if (post.author.toString() !== req.user._id.toString())
-      return res.status(403).json({ message: "Not authorized" });
-
-    const updatedPost = await Post.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(updatedPost);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.json({ message: "Post updated successfully", post });
+  } catch (error) {
+    next(error);
   }
 };
 
-// @desc    Delete post
-export const deletePost = async (req, res) => {
+// Delete post
+export const deletePost = async (req, res, next) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findByIdAndDelete(req.params.id);
     if (!post) return res.status(404).json({ message: "Post not found" });
-
-    if (post.author.toString() !== req.user._id.toString())
-      return res.status(403).json({ message: "Not authorized" });
-
-    await post.deleteOne();
-    res.json({ message: "Post removed" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.json({ message: "Post deleted successfully" });
+  } catch (error) {
+    next(error);
   }
 };
-

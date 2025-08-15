@@ -1,91 +1,114 @@
-import Category from '../models/Category.js';
+// controllers/categoryController.js
+import Category from "../models/category.js";
 
 // @desc    Create a new category
 // @route   POST /api/categories
 // @access  Private/Admin
-export const createCategory = async (req, res) => {
+export const createCategory = async (req, res, next) => {
   try {
-    const { name } = req.body;
+    const { name, description } = req.body;
 
-    const exists = await Category.findOne({ name });
-    if (exists) {
-      return res.status(400).json({ message: 'Category already exists' });
+    if (!name) {
+      return res.status(400).json({ message: "Category name is required" });
     }
 
-    const category = await Category.create({ name });
+    const existingCategory = await Category.findOne({ name });
+    if (existingCategory) {
+      return res.status(400).json({ message: "Category already exists" });
+    }
 
-    res.status(201).json(category);
+    const category = await Category.create({ name, description });
+
+    res.status(201).json({
+      success: true,
+      data: category,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error while creating category', error: error.message });
+    next(error);
   }
 };
 
 // @desc    Get all categories
 // @route   GET /api/categories
 // @access  Public
-export const getAllCategories = async (req, res) => {
+export const getCategories = async (req, res, next) => {
   try {
-    const categories = await Category.find().sort({ createdAt: -1 });
-    res.status(200).json(categories);
+    const categories = await Category.find();
+    res.status(200).json({
+      success: true,
+      count: categories.length,
+      data: categories,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error while fetching categories', error: error.message });
+    next(error);
   }
 };
 
-// @desc    Get a single category by ID
+// @desc    Get single category by ID
 // @route   GET /api/categories/:id
 // @access  Public
-export const getCategoryById = async (req, res) => {
+export const getCategoryById = async (req, res, next) => {
   try {
     const category = await Category.findById(req.params.id);
 
     if (!category) {
-      return res.status(404).json({ message: 'Category not found' });
+      return res.status(404).json({ message: "Category not found" });
     }
 
-    res.status(200).json(category);
+    res.status(200).json({
+      success: true,
+      data: category,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error while fetching category', error: error.message });
+    next(error);
   }
 };
 
-// @desc    Update a category
+// @desc    Update category
 // @route   PUT /api/categories/:id
 // @access  Private/Admin
-export const updateCategory = async (req, res) => {
+export const updateCategory = async (req, res, next) => {
   try {
-    const { name } = req.body;
+    const { name, description } = req.body;
 
-    const category = await Category.findById(req.params.id);
+    let category = await Category.findById(req.params.id);
 
     if (!category) {
-      return res.status(404).json({ message: 'Category not found' });
+      return res.status(404).json({ message: "Category not found" });
     }
 
     category.name = name || category.name;
-    const updatedCategory = await category.save();
+    category.description = description || category.description;
 
-    res.status(200).json(updatedCategory);
+    await category.save();
+
+    res.status(200).json({
+      success: true,
+      data: category,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error while updating category', error: error.message });
+    next(error);
   }
 };
 
-// @desc    Delete a category
+// @desc    Delete category
 // @route   DELETE /api/categories/:id
 // @access  Private/Admin
-export const deleteCategory = async (req, res) => {
+export const deleteCategory = async (req, res, next) => {
   try {
     const category = await Category.findById(req.params.id);
 
     if (!category) {
-      return res.status(404).json({ message: 'Category not found' });
+      return res.status(404).json({ message: "Category not found" });
     }
 
     await category.remove();
 
-    res.status(200).json({ message: 'Category deleted successfully' });
+    res.status(200).json({
+      success: true,
+      message: "Category removed",
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error while deleting category', error: error.message });
+    next(error);
   }
 };
