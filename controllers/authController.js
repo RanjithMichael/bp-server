@@ -17,14 +17,12 @@ export const registerUser = async (req, res, next) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      res.status(400);
-      throw new Error("Please provide all required fields");
+      return res.status(400).json({ message: "Please provide all required fields" });
     }
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      res.status(400);
-      throw new Error("User already exists");
+      return res.status(400).json({ message: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -36,10 +34,10 @@ export const registerUser = async (req, res, next) => {
     });
 
     res.status(201).json({
-      _id: user.id,
+      _id: user._id,
       name: user.name,
       email: user.email,
-      token: generateToken(user.id),
+      token: generateToken(user._id), // ✅ use _id
     });
   } catch (error) {
     next(error);
@@ -55,14 +53,13 @@ export const loginUser = async (req, res, next) => {
 
     if (user && (await bcrypt.compare(password, user.password))) {
       res.json({
-        _id: user.id,
+        _id: user._id,
         name: user.name,
         email: user.email,
-        token: generateToken(user.id),
+        token: generateToken(user._id), // ✅ use _id
       });
     } else {
-      res.status(401);
-      throw new Error("Invalid email or password");
+      return res.status(401).json({ message: "Invalid email or password" });
     }
   } catch (error) {
     next(error);
@@ -75,8 +72,7 @@ export const deleteUser = async (req, res, next) => {
     const user = await User.findById(req.params.id);
 
     if (!user) {
-      res.status(404);
-      throw new Error("User not found");
+      return res.status(404).json({ message: "User not found" });
     }
 
     await Comment.deleteMany({ user: user._id }); // optional
@@ -87,3 +83,4 @@ export const deleteUser = async (req, res, next) => {
     next(error);
   }
 };
+
