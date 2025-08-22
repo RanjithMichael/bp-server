@@ -1,86 +1,115 @@
 // controllers/authController.js
 import User from "../models/User.js";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import Comment from "../models/comment.js"; // Only if deleting comments
 
 // Generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
+const generateToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
   });
 };
 
-// Register user
-export const registerUser = async (req, res, next) => {
+// @desc    Register a new user
+// @route   POST /api/auth/register
+// @access  Public
+export const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "Please provide all required fields" });
-    }
-
+    // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+    // Create new user (password will be hashed by userSchema pre-save hook)
     const user = await User.create({
       name,
       email,
-      password: hashedPassword,
+      password,
+      role: role || "user", // default role = user
     });
 
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      token: generateToken(user._id), // ✅ use _id
-    });
+    if (user) {
+      res.status(201).json({
+        message: "User registered successfully",
+        token: generateToken(user._id, user.role),
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+      });
+    } else {
+      res.status(400).json({ message: "Invalid user data" });
+    }
   } catch (error) {
-    next(error);
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Login user
-export const loginUser = async (req, res, next) => {
+// @desc    Login user
+// @route   POST /api/auth/login
+// @access  Public
+export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // 1. Check if user exists
     const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
 
-    if (user && (await bcrypt.compare(password, user.password))) {
-      res.json({
-        _id: user._id,
+    // 2. Compare entered password with hashed password
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // 3. Update last login time
+    await user.updateLoginTime();
+
+    // 4. Generate JWT and respond
+    res.status(200).json({
+      message: "Login successful",
+      token: generateToken(user._id, user.role),
+      user: {
+        id: user._id,
         name: user.name,
         email: user.email,
-        token: generateToken(user._id), // ✅ use _id
-      });
-    } else {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
+        role: user.role,
+        lastLogin: user.lastLogin,
+      },
+    });
   } catch (error) {
-    next(error);
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Admin: delete user and their comments
-export const deleteUser = async (req, res, next) => {
+// @desc    Delete a user (Admin only)
+// @route   DELETE /api/auth/:id
+// @access  Admin
+export const deleteUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const userId = req.params.id;
+
+    const user = await User.findByIdAndDelete(userId);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    await Comment.deleteMany({ user: user._id }); // optional
-    await user.deleteOne();
+    // (Optional) Delete related posts/comments if needed
+    // await Post.deleteMany({ author: userId });
+    // await Comment.deleteMany({ user: userId });
 
-    res.json({ message: "User and their comments deleted" });
+    res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
-    next(error);
+    console.error("Delete user error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
-
