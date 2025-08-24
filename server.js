@@ -2,10 +2,6 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
-import authRoutes from "./routes/authRoutes.js";
-import categoryRoutes from "./routes/categoryRoutes.js";
-import postRoutes from "./routes/postRoutes.js";
-import commentRoutes from "./routes/commentRoutes.js";
 import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
 
 dotenv.config();
@@ -13,31 +9,26 @@ connectDB();
 
 const app = express();
 
-// Middleware
-app.use(express.json());
+// ✅ Enable CORS (allow frontend at port 3000 to access backend 5000)
 app.use(cors({
-  origin: "http://localhost:3000", 
-  credentials: true
+  origin: "http://localhost:3000",
+  credentials: true,
 }));
 
-// Routes
+app.use(express.json());
+
+// Example routes
+import authRoutes from "./routes/authRoutes.js";
+app.use("/api/auth", authRoutes);
+
+// 👉 Root route
 app.get("/", (req, res) => {
-  res.send("API is running!");
+  res.send("API is running...");
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/posts", postRoutes);
-app.use("/api/comments", commentRoutes);
-
-// 404 Handler
+// Error Middleware
 app.use(notFound);
-
-// Error Handler
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
