@@ -35,7 +35,9 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
+  // ✅ Make sure password is included in query
+  const user = await User.findOne({ email }).select("+password");
+
   if (user && (await user.matchPassword(password))) {
     res.json({
       _id: user.id,
