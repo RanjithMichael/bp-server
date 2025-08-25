@@ -23,4 +23,3 @@ const getCommentsByPost = asyncHandler(async (req, res) => {
 });
 
 export { addComment, getCommentsByPost };
-
