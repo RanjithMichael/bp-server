@@ -4,7 +4,9 @@ import { protect, admin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-router.route("/").post(protect, admin, createCategory).get(getCategories);
+router.route("/")
+  .get(getCategories)             // anyone can view categories
+  .post(protect, admin, createCategory);
 
 export default router;
 

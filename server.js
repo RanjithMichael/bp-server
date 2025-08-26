@@ -3,30 +3,34 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
+import authRoutes from "./routes/authRoutes.js";
+import postRoutes from "./routes/postRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
+import tagRoutes from "./routes/tagRoutes.js";
+import commentRoutes from "./routes/commentRoutes.js";
 
 dotenv.config();
 connectDB();
 
 const app = express();
 
-// ✅ Enable CORS (allow frontend at port 3000 to access backend 5000)
-app.use(cors({
-  origin: "http://localhost:3000",
-  credentials: true,
-}));
+// Middleware
+app.use(cors());
+app.use(express.json()); // to parse JSON bodies
 
-app.use(express.json());
-
-// Example routes
-import authRoutes from "./routes/authRoutes.js";
-app.use("/api/auth", authRoutes);
-
-// 👉 Root route
+// Root Route
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-// Error Middleware
+// Routes
+app.use("/api/auth", authRoutes);   // Authentication routes
+app.use("/api/posts", postRoutes);  // Blog posts routes
+app.use("/api/categories", categoryRoutes);
+app.use("/api/tags", tagRoutes);
+app.use("/api/comments", commentRoutes);
+
+// Error Handling
 app.use(notFound);
 app.use(errorHandler);
 
