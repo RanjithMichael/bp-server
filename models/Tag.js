@@ -5,7 +5,7 @@ const tagSchema = mongoose.Schema(
     name: {
       type: String,
       required: true,
-      unique: true,  // tags must be unique
+      unique: true,  
       trim: true,
     },
   },

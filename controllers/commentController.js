@@ -6,7 +6,7 @@ import Post from "../models/Post.js";
 // @route   POST /api/comments/:postId
 // @access  Private
 export const addComment = asyncHandler(async (req, res) => {
-  const { text, context } = req.body; // ✅ renamed content -> text
+  const { text, context } = req.body; 
   const postId = req.params.postId;
 
   const post = await Post.findById(postId);
@@ -16,8 +16,8 @@ export const addComment = asyncHandler(async (req, res) => {
   }
 
   const comment = await Comment.create({
-    text,       // ✅ renamed
-    context,    // still included
+    text,       
+    context,    
     author: req.user._id,
     post: postId,
   });

@@ -15,7 +15,7 @@ const userSchema = mongoose.Schema(
     password: {
       type: String,
       required: true,
-      select: false, // 👈 important (password won’t be returned unless explicitly selected)
+      select: false, 
     },
   },
   {
