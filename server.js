@@ -17,11 +17,24 @@ const app = express();
 // Middleware
 app.use(express.json()); // parse JSON
 
-// ✅ Enable CORS for frontend
-app.use(cors({
-  origin: process.env.CLIENT_URL,
-  credentials: true
-}));
+// ✅ Allow both local + deployed frontend
+const allowedOrigins = [
+  process.env.CLIENT_URL,   // http://localhost:5173
+  process.env.DEPLOYED_URL, // https://your-frontend.netlify.app
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
 // Root Route
 app.get("/", (req, res) => {
@@ -40,5 +53,4 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
