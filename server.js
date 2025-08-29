@@ -15,8 +15,13 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(express.json()); // to parse JSON bodies
+app.use(express.json()); // parse JSON
+
+// ✅ Enable CORS for frontend
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  credentials: true
+}));
 
 // Root Route
 app.get("/", (req, res) => {
@@ -24,8 +29,8 @@ app.get("/", (req, res) => {
 });
 
 // Routes
-app.use("/api/auth", authRoutes);   // Authentication routes
-app.use("/api/posts", postRoutes);  // Blog posts routes
+app.use("/api/auth", authRoutes);   
+app.use("/api/posts", postRoutes);  
 app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/comments", commentRoutes);
@@ -36,3 +41,4 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
