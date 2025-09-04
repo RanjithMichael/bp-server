@@ -15,7 +15,11 @@ app.use(express.json());
 // Enable CORS
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",   // CRA dev
+      "http://localhost:5173",   // Vite dev
+      "https://bp-client.netlify.app/" // your deployed frontend
+    ],
     credentials: true,
   })
 );
@@ -25,8 +29,9 @@ app.use("/api/auth", authRoutes);
 
 // Test route
 app.get("/", (req, res) => {
-  res.send("API is running...");
+  res.send("API is running 🚀");
 });
 
 module.exports = app;
+
 
