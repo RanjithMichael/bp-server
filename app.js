@@ -12,14 +12,25 @@ const app = express();
 // Middleware
 app.use(express.json());
 
+// Allowed origins for dev + prod
+const allowedOrigins = [
+  "http://localhost:5173",        // Vite dev server
+  "https://bp-client.netlify.app" // Netlify deployed frontend
+];
+
 // Enable CORS
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",   // CRA dev
-      "http://localhost:5173",   // Vite dev
-      "https://bp-client.netlify.app/" // your deployed frontend
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like Postman or curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
@@ -33,5 +44,3 @@ app.get("/", (req, res) => {
 });
 
 module.exports = app;
-
-
