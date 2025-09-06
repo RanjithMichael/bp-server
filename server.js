@@ -20,9 +20,7 @@ app.use(express.json()); // parse JSON
 // ✅ Allow both local + deployed frontend
 const allowedOrigins = [
   process.env.CLIENT_URL,   // http://localhost:5173
-  process.env.DEPLOYED_URL, // https://your-frontend.netlify.app
-];
-
+]
 app.use(
   cors({
     origin: (origin, callback) => {
