@@ -10,42 +10,13 @@ import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-/**
- * @route   GET /api/posts
- * @desc    Get all posts
- * @access  Public
- */
-router.get("/", getPosts);
+// Public
+router.get("/", getPosts);       // Get all posts
+router.get("/:id", getPost);     // Get single post by id
 
-/**
- * @route   POST /api/posts
- * @desc    Create a new post
- * @access  Private (authenticated users only)
- */
+// Private (only logged-in users)
 router.post("/", protect, createPost);
-
-/**
- * @route   GET /api/posts/:id
- * @desc    Get a single post by ID
- * @access  Public
- */
-router.get("/:id", getPost);
-
-/**
- * @route   PUT /api/posts/:id
- * @desc    Update a post by ID (author only)
- * @access  Private (authenticated users only)
- */
 router.put("/:id", protect, updatePost);
-
-/**
- * @route   DELETE /api/posts/:id
- * @desc    Delete a post by ID (author only)
- * @access  Private (authenticated users only)
- */
 router.delete("/:id", protect, deletePost);
 
 export default router;
-
-
-
