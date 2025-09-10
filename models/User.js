@@ -5,47 +5,51 @@ const userSchema = mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: [true, "Name is required"],
     },
     email: {
       type: String,
-      required: true,
+      required: [true, "Email is required"],
       unique: true,
+      lowercase: true,
     },
     password: {
       type: String,
-      required: true,
-      select: false, 
+      required: [true, "Password is required"],
+      select: false, // do not return password by default
     },
-   isAdmin: {
+    isAdmin: {
       type: Boolean,
       required: true,
-      default: false, // all users normal by default
-    }, 
+      default: false, // normal users by default
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// ✅ Encrypt password before saving
+// 🔒 Encrypt password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
-    next();
+    return next();
   }
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  next();
 });
 
-// ✅ Method to compare passwords
+// ✅ Compare entered password with hashed password
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// ✅ Create User model
 const User = mongoose.model("User", userSchema);
 
 export default User;
+
 
  
 
