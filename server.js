@@ -19,11 +19,14 @@ app.use(express.json()); // parse JSON
 
 // ✅ Allow both local + deployed frontend
 const allowedOrigins = [
-  process.env.CLIENT_URL,   // http://localhost:5173
-]
+  "http://localhost:5173",
+  "https://bloggingplatformclient.netlify.app",
+];
+
+// Dynamically check origin
 app.use(
   cors({
-    origin: (origin, callback) => {
+    origin: function (origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -40,8 +43,8 @@ app.get("/", (req, res) => {
 });
 
 // Routes
-app.use("/api/auth", authRoutes);   
-app.use("/api/posts", postRoutes);  
+app.use("/api/auth", authRoutes);
+app.use("/api/posts", postRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/comments", commentRoutes);
