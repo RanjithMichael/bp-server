@@ -23,7 +23,7 @@ app.use(express.json()); // Parse JSON body
 // Allowed origins for dev + prod
 const allowedOrigins = [
   "http://localhost:5173",        // Vite dev server
-  "https://bloggingplatformclient.netlify.app/" // Netlify deployed frontend
+  "https://bloggingplatformclient.netlify.app" // Netlify deployed frontend
 ];
 
 // Enable CORS
