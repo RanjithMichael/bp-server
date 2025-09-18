@@ -26,4 +26,4 @@ const getUserById = asyncHandler(async (req, res) => {
   res.json({ user, posts, subscriptions });
 });
 
-export { getUserById };
+export default { getUserById };
