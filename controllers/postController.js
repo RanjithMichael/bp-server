@@ -1,72 +1,46 @@
 import asyncHandler from "express-async-handler";
 import Post from "../models/Post.js";
 
-/**
- * @desc    Create new post
- * @route   POST /api/posts
- * @access  Private
- */
-export const createPost = asyncHandler(async (req, res) => {
-  const { title, content, image, category, tags } = req.body;
+// 📌 Get post by ID (increments views)
+export const getPostById = asyncHandler(async (req, res) => {
+  const post = await Post.findById(req.params.id).populate("author", "name email");
 
-  if (!title || !content) {
+  if (!post) {
+    res.status(404);
+    throw new Error("Post not found");
+  }
+
+  // increment views
+  post.analytics.views += 1;
+  await post.save();
+
+  res.json(post);
+});
+
+// 📌 Like a post
+export const likePost = asyncHandler(async (req, res) => {
+  const post = await Post.findById(req.params.id);
+
+  if (!post) {
+    res.status(404);
+    throw new Error("Post not found");
+  }
+
+  // check if user already liked
+  if (post.analytics.likedBy.includes(req.user._id)) {
     res.status(400);
-    throw new Error("Title and content are required");
+    throw new Error("You already liked this post");
   }
 
-  const post = new Post({
-    title,
-    content,
-    image: image || "",
-    category: category || null,
-    tags: tags || [],
-    author: req.user._id, // from auth middleware
-  });
+  post.analytics.likes += 1;
+  post.analytics.likedBy.push(req.user._id);
+  await post.save();
 
-  const createdPost = await post.save();
-  res.status(201).json(createdPost);
+  res.json({ message: "Post liked", likes: post.analytics.likes });
 });
 
-/**
- * @desc    Get all posts
- * @route   GET /api/posts
- * @access  Public
- */
-export const getPosts = asyncHandler(async (req, res) => {
-  const posts = await Post.find()
-    .populate("author", "name email")
-    .populate("category", "name")
-    .populate("tags", "name");
-
-  res.status(200).json(posts);
-});
-
-/**
- * @desc    Get single post by ID
- * @route   GET /api/posts/:id
- * @access  Public
- */
-export const getPost = asyncHandler(async (req, res) => {
-  const post = await Post.findById(req.params.id)
-    .populate("author", "name email")
-    .populate("category", "name")
-    .populate("tags", "name");
-
-  if (post) {
-    res.status(200).json(post);
-  } else {
-    res.status(404);
-    throw new Error("Post not found");
-  }
-});
-
-/**
- * @desc    Update post
- * @route   PUT /api/posts/:id
- * @access  Private (only author)
- */
-export const updatePost = asyncHandler(async (req, res) => {
-  const { title, content, image, category, tags } = req.body;
+// 📌 Unlike a post
+export const unlikePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
   if (!post) {
@@ -74,27 +48,23 @@ export const updatePost = asyncHandler(async (req, res) => {
     throw new Error("Post not found");
   }
 
-  if (post.author.toString() !== req.user._id.toString()) {
-    res.status(403);
-    throw new Error("Not authorized to update this post");
+  // check if user actually liked
+  if (!post.analytics.likedBy.includes(req.user._id)) {
+    res.status(400);
+    throw new Error("You have not liked this post");
   }
 
-  post.title = title || post.title;
-  post.content = content || post.content;
-  post.image = image || post.image;
-  post.category = category || post.category;
-  post.tags = tags || post.tags;
+  post.analytics.likes -= 1;
+  post.analytics.likedBy = post.analytics.likedBy.filter(
+    (id) => id.toString() !== req.user._id.toString()
+  );
+  await post.save();
 
-  const updatedPost = await post.save();
-  res.status(200).json(updatedPost);
+  res.json({ message: "Post unliked", likes: post.analytics.likes });
 });
 
-/**
- * @desc    Delete post
- * @route   DELETE /api/posts/:id
- * @access  Private (only author)
- */
-export const deletePost = asyncHandler(async (req, res) => {
+// 📌 Share a post
+export const sharePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
   if (!post) {
@@ -102,14 +72,44 @@ export const deletePost = asyncHandler(async (req, res) => {
     throw new Error("Post not found");
   }
 
-  if (post.author.toString() !== req.user._id.toString()) {
-    res.status(403);
-    throw new Error("Not authorized to delete this post");
-  }
+  post.analytics.shares += 1;
+  post.analytics.sharedBy.push(req.user._id);
+  await post.save();
 
-  await post.deleteOne();
-  res.status(200).json({ message: "Post removed" });
+  res.json({ message: "Post shared", shares: post.analytics.shares });
 });
 
+// 📌 Add a comment
+export const addComment = asyncHandler(async (req, res) => {
+  const { text } = req.body;
+  const post = await Post.findById(req.params.id);
 
+  if (!post) {
+    res.status(404);
+    throw new Error("Post not found");
+  }
+
+  const comment = {
+    user: req.user._id,
+    text,
+    createdAt: Date.now(),
+  };
+
+  post.analytics.comments.push(comment);
+  await post.save();
+
+  res.json({ message: "Comment added", comments: post.analytics.comments });
+});
+
+// 📌 Get analytics (views, likes, shares, comments)
+export const getPostAnalytics = asyncHandler(async (req, res) => {
+  const post = await Post.findById(req.params.id).populate("analytics.comments.user", "name");
+
+  if (!post) {
+    res.status(404);
+    throw new Error("Post not found");
+  }
+
+  res.json(post.analytics);
+});
 
