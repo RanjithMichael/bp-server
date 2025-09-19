@@ -1,7 +1,21 @@
 import asyncHandler from "express-async-handler";
 import Post from "../models/Post.js";
 
-// 📌 Get post by ID (increments views)
+//  Get all posts
+export const getAllPosts = asyncHandler(async (req, res) => {
+  try {
+    const posts = await Post.find()
+      .sort({ createdAt: -1 }) // latest first
+      .populate("author", "name email"); // include author details
+
+    res.json(posts);
+  } catch (error) {
+    res.status(500);
+    throw new Error("Server error fetching posts");
+  }
+});
+
+//  Get post by ID (increments views)
 export const getPostById = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id).populate("author", "name email");
 
@@ -17,7 +31,7 @@ export const getPostById = asyncHandler(async (req, res) => {
   res.json(post);
 });
 
-// 📌 Like a post
+//  Like a post
 export const likePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
@@ -39,7 +53,7 @@ export const likePost = asyncHandler(async (req, res) => {
   res.json({ message: "Post liked", likes: post.analytics.likes });
 });
 
-// 📌 Unlike a post
+//  Unlike a post
 export const unlikePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
@@ -63,7 +77,7 @@ export const unlikePost = asyncHandler(async (req, res) => {
   res.json({ message: "Post unliked", likes: post.analytics.likes });
 });
 
-// 📌 Share a post
+//  Share a post
 export const sharePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
@@ -79,7 +93,7 @@ export const sharePost = asyncHandler(async (req, res) => {
   res.json({ message: "Post shared", shares: post.analytics.shares });
 });
 
-// 📌 Add a comment
+//  Add a comment
 export const addComment = asyncHandler(async (req, res) => {
   const { text } = req.body;
   const post = await Post.findById(req.params.id);
@@ -101,7 +115,7 @@ export const addComment = asyncHandler(async (req, res) => {
   res.json({ message: "Comment added", comments: post.analytics.comments });
 });
 
-// 📌 Get analytics (views, likes, shares, comments)
+//  Get analytics (views, likes, shares, comments)
 export const getPostAnalytics = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id).populate("analytics.comments.user", "name");
 
