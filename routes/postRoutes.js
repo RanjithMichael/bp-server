@@ -7,10 +7,14 @@ import {
   sharePost,
   getPostAnalytics,
   addComment,
+  createPost, 
 } from "../controllers/postController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
+
+// Create new post (protected)
+router.route("/").post(protect, createPost);
 
 // Get all posts
 router.route("/").get(getAllPosts);
@@ -23,7 +27,8 @@ router.route("/:id/like")
   .post(protect, likePost)
   .delete(protect, unlikePost);
 
-//  Shares
+ //  Shares
+
 router.route("/:id/share").post(protect, sharePost);
 
 //  Comments

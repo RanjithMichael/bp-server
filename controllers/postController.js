@@ -1,21 +1,57 @@
 import asyncHandler from "express-async-handler";
 import Post from "../models/Post.js";
 
-//  Get all posts
-export const getAllPosts = asyncHandler(async (req, res) => {
-  try {
-    const posts = await Post.find()
-      .sort({ createdAt: -1 }) // latest first
-      .populate("author", "name email"); // include author details
+/**
+ * @desc    Create a new post
+ * @route   POST /api/posts
+ * @access  Private
+ */
+export const createPost = asyncHandler(async (req, res) => {
+  const { title, content, category, tags } = req.body;
 
-    res.json(posts);
-  } catch (error) {
-    res.status(500);
-    throw new Error("Server error fetching posts");
+  if (!title || !content) {
+    res.status(400);
+    throw new Error("Title and content are required");
   }
+
+  const post = new Post({
+    author: req.user._id,   // from protect middleware
+    title,
+    content,
+    category: category || "General",
+    tags: tags || [],
+    analytics: {
+      views: 0,
+      likes: 0,
+      likedBy: [],
+      shares: 0,
+      sharedBy: [],
+      comments: [],
+    },
+  });
+
+  const createdPost = await post.save();
+  res.status(201).json(createdPost);
 });
 
-//  Get post by ID (increments views)
+/**
+ * @desc    Get all posts
+ * @route   GET /api/posts
+ * @access  Public
+ */
+export const getAllPosts = asyncHandler(async (req, res) => {
+  const posts = await Post.find()
+    .sort({ createdAt: -1 }) // latest first
+    .populate("author", "name email"); // include author details
+
+  res.json(posts);
+});
+
+/**
+ * @desc    Get a post by ID (increments views)
+ * @route   GET /api/posts/:id
+ * @access  Public
+ */
 export const getPostById = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id).populate("author", "name email");
 
@@ -31,7 +67,11 @@ export const getPostById = asyncHandler(async (req, res) => {
   res.json(post);
 });
 
-//  Like a post
+/**
+ * @desc    Like a post
+ * @route   POST /api/posts/:id/like
+ * @access  Private
+ */
 export const likePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
@@ -53,7 +93,11 @@ export const likePost = asyncHandler(async (req, res) => {
   res.json({ message: "Post liked", likes: post.analytics.likes });
 });
 
-//  Unlike a post
+/**
+ * @desc    Unlike a post
+ * @route   DELETE /api/posts/:id/like
+ * @access  Private
+ */
 export const unlikePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
@@ -77,7 +121,11 @@ export const unlikePost = asyncHandler(async (req, res) => {
   res.json({ message: "Post unliked", likes: post.analytics.likes });
 });
 
-//  Share a post
+/**
+ * @desc    Share a post
+ * @route   POST /api/posts/:id/share
+ * @access  Private
+ */
 export const sharePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
@@ -93,7 +141,11 @@ export const sharePost = asyncHandler(async (req, res) => {
   res.json({ message: "Post shared", shares: post.analytics.shares });
 });
 
-//  Add a comment
+/**
+ * @desc    Add a comment
+ * @route   POST /api/posts/:id/comment
+ * @access  Private
+ */
 export const addComment = asyncHandler(async (req, res) => {
   const { text } = req.body;
   const post = await Post.findById(req.params.id);
@@ -115,9 +167,16 @@ export const addComment = asyncHandler(async (req, res) => {
   res.json({ message: "Comment added", comments: post.analytics.comments });
 });
 
-//  Get analytics (views, likes, shares, comments)
+/**
+ * @desc    Get analytics (views, likes, shares, comments)
+ * @route   GET /api/posts/:id/analytics
+ * @access  Private
+ */
 export const getPostAnalytics = asyncHandler(async (req, res) => {
-  const post = await Post.findById(req.params.id).populate("analytics.comments.user", "name");
+  const post = await Post.findById(req.params.id).populate(
+    "analytics.comments.user",
+    "name"
+  );
 
   if (!post) {
     res.status(404);
@@ -126,4 +185,3 @@ export const getPostAnalytics = asyncHandler(async (req, res) => {
 
   res.json(post.analytics);
 });
-
