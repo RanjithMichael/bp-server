@@ -1,40 +1,30 @@
 import express from "express";
 import {
+  createPost,
   getAllPosts,
   getPostById,
   likePost,
   unlikePost,
   sharePost,
-  getPostAnalytics,
   addComment,
-  createPost, 
+  getPostAnalytics,
 } from "../controllers/postController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Create new post (protected)
-router.route("/").post(protect, createPost);
+// Public
+router.get("/", getAllPosts);
+router.get("/:id", getPostById);
 
-// Get all posts
-router.route("/").get(getAllPosts);
-
-// Get single post (increments views)
-router.route("/:id").get(getPostById);
-
-//  Likes
-router.route("/:id/like")
-  .post(protect, likePost)
-  .delete(protect, unlikePost);
-
- //  Shares
-
-router.route("/:id/share").post(protect, sharePost);
-
-//  Comments
-router.route("/:id/comment").post(protect, addComment);
-
-//  Analytics
-router.route("/:id/analytics").get(protect, getPostAnalytics);
+// Private
+router.post("/", protect, createPost);
+router.post("/:id/like", protect, likePost);
+router.delete("/:id/like", protect, unlikePost);
+router.post("/:id/share", protect, sharePost);
+router.post("/:id/comment", protect, addComment);
+router.get("/:id/analytics", protect, getPostAnalytics);
 
 export default router;
+
+
