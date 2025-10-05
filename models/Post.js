@@ -1,10 +1,17 @@
 import mongoose from "mongoose";
+import slugify from "slugify";
 
 const postSchema = new mongoose.Schema(
   {
     title: {
       type: String,
       required: true,
+      trim: true,
+    },
+    slug: {
+      type: String,
+      required: true,
+      unique: true, // ensures no duplicate slugs
     },
     content: {
       type: String,
@@ -21,7 +28,7 @@ const postSchema = new mongoose.Schema(
     },
     tags: [String],
 
-    // ✅ Analytics field
+    // Analytics field
     analytics: {
       views: { type: Number, default: 0 },
       likes: { type: Number, default: 0 },
@@ -40,7 +47,16 @@ const postSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Auto-generate slug before validation
+postSchema.pre("validate", function (next) {
+  if (this.title && (!this.slug || this.isModified("title"))) {
+    this.slug = slugify(this.title, { lower: true, strict: true });
+  }
+  next();
+});
+
 const Post = mongoose.model("Post", postSchema);
 
 export default Post;
+
 

@@ -14,7 +14,7 @@ export const createPost = asyncHandler(async (req, res) => {
   }
 
   const post = new Post({
-    author: req.user._id, // from protect middleware
+    author: req.user._id,
     title,
     content,
     category: category || "General",
@@ -52,7 +52,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 
   const posts = await Post.find(keyword)
     .sort({ createdAt: -1 })
-    .populate("author", "name email");
+    .populate("author", "name email profilePic");
 
   res.json(posts);
 });
@@ -65,7 +65,28 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 export const getPostById = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id).populate(
     "author",
-    "name email"
+    "name email profilePic"
+  );
+
+  if (!post) {
+    return res.status(404).json({ message: "Post not found" });
+  }
+
+  post.analytics.views = (post.analytics.views || 0) + 1;
+  await post.save();
+
+  res.json(post);
+});
+
+/**
+ * @desc    Get a post by slug (increments views)
+ * @route   GET /api/posts/slug/:slug
+ * @access  Public
+ */
+export const getPostBySlug = asyncHandler(async (req, res) => {
+  const post = await Post.findOne({ slug: req.params.slug }).populate(
+    "author",
+    "name email profilePic"
   );
 
   if (!post) {
@@ -86,18 +107,10 @@ export const getPostById = asyncHandler(async (req, res) => {
 export const likePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
-  if (!post) {
-    return res.status(404).json({ message: "Post not found" });
-  }
+  if (!post) return res.status(404).json({ message: "Post not found" });
 
-  // check if user already liked
-  if (
-    post.analytics.likedBy.some(
-      (id) => id.toString() === req.user._id.toString()
-    )
-  ) {
+  if (post.analytics.likedBy.some(id => id.toString() === req.user._id.toString()))
     return res.status(400).json({ message: "You already liked this post" });
-  }
 
   post.analytics.likes += 1;
   post.analytics.likedBy.push(req.user._id);
@@ -114,22 +127,14 @@ export const likePost = asyncHandler(async (req, res) => {
 export const unlikePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
-  if (!post) {
-    return res.status(404).json({ message: "Post not found" });
-  }
+  if (!post) return res.status(404).json({ message: "Post not found" });
 
-  // check if user actually liked
-  if (
-    !post.analytics.likedBy.some(
-      (id) => id.toString() === req.user._id.toString()
-    )
-  ) {
+  if (!post.analytics.likedBy.some(id => id.toString() === req.user._id.toString()))
     return res.status(400).json({ message: "You have not liked this post" });
-  }
 
   post.analytics.likes -= 1;
   post.analytics.likedBy = post.analytics.likedBy.filter(
-    (id) => id.toString() !== req.user._id.toString()
+    id => id.toString() !== req.user._id.toString()
   );
   await post.save();
 
@@ -144,17 +149,10 @@ export const unlikePost = asyncHandler(async (req, res) => {
 export const sharePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
-  if (!post) {
-    return res.status(404).json({ message: "Post not found" });
-  }
+  if (!post) return res.status(404).json({ message: "Post not found" });
 
-  if (
-    post.analytics.sharedBy.some(
-      (id) => id.toString() === req.user._id.toString()
-    )
-  ) {
+  if (post.analytics.sharedBy.some(id => id.toString() === req.user._id.toString()))
     return res.status(400).json({ message: "You already shared this post" });
-  }
 
   post.analytics.shares += 1;
   post.analytics.sharedBy.push(req.user._id);
@@ -172,9 +170,7 @@ export const addComment = asyncHandler(async (req, res) => {
   const { text } = req.body;
   const post = await Post.findById(req.params.id);
 
-  if (!post) {
-    return res.status(404).json({ message: "Post not found" });
-  }
+  if (!post) return res.status(404).json({ message: "Post not found" });
 
   const comment = {
     user: req.user._id,
@@ -199,9 +195,7 @@ export const getPostAnalytics = asyncHandler(async (req, res) => {
     "name"
   );
 
-  if (!post) {
-    return res.status(404).json({ message: "Post not found" });
-  }
+  if (!post) return res.status(404).json({ message: "Post not found" });
 
   res.json(post.analytics);
 });
