@@ -1,6 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
 
@@ -17,16 +19,19 @@ connectDB();
 
 const app = express();
 
-// Middleware
-app.use(express.json()); // Parse JSON body
+// For __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Allowed origins for dev + prod
+// Middleware
+app.use(express.json());
+
+// CORS setup
 const allowedOrigins = [
-  "http://localhost:5173",        // Vite dev server
-  "https://bloggingplatformclient.netlify.app" // Netlify deployed frontend
+  "http://localhost:5173",
+  "https://bloggingplatformclient.netlify.app",
 ];
 
-// Enable CORS
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -36,11 +41,11 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
-    credentials: true, // allow cookies/auth headers
+    credentials: true,
   })
 );
 
-// Routes
+// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
@@ -48,12 +53,25 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/comments", commentRoutes);
 
-// Test route
-app.get("/", (req, res) => {
-  res.send("API is running 🚀");
-});
 
-// Error Handling Middlewares
+const __root = path.resolve();
+
+if (process.env.NODE_ENV === "production") {
+  const clientBuildPath = path.join(__root, "/client/dist"); // adjust to /build if CRA
+  app.use(express.static(clientBuildPath));
+
+  // Serve React index.html for any route not starting with /api
+  app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(clientBuildPath, "index.html"));
+  });
+} else {
+  // Development test route
+  app.get("/", (req, res) => {
+    res.send("API is running 🚀");
+  });
+}
+
+// Error handling middlewares
 app.use(notFound);
 app.use(errorHandler);
 
