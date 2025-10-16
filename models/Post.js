@@ -25,10 +25,14 @@ const postSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
+      default: "General",
     },
-    tags: [String],
+    tags: {
+      type: [String],
+      default: [],
+    },
 
-    // Analytics field
+    // Analytics
     analytics: {
       views: { type: Number, default: 0 },
       likes: { type: Number, default: 0 },
@@ -58,5 +62,6 @@ postSchema.pre("validate", function (next) {
 const Post = mongoose.model("Post", postSchema);
 
 export default Post;
+
 
 

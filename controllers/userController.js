@@ -28,26 +28,25 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  // Basic info
+  // Update basic info
   user.name = req.body.name || user.name;
   user.email = req.body.email || user.email;
 
-  // Password
+  // Password (optional)
   if (req.body.password) {
     user.password = req.body.password;
   }
 
-  // New profile fields
-  if (req.body.bio !== undefined) {
-    user.bio = req.body.bio;
-  }
+  // Bio and social links
+  if (req.body.bio !== undefined) user.bio = req.body.bio;
+  if (req.body.socialLinks !== undefined) user.socialLinks = req.body.socialLinks;
 
-  if (req.body.profilePic !== undefined) {
+  // Profile picture (via multer upload)
+  if (req.file) {
+    user.profilePic = `/uploads/${req.file.filename}`;
+  } else if (req.body.profilePic !== undefined) {
+    // fallback for direct image URL update
     user.profilePic = req.body.profilePic;
-  }
-
-  if (req.body.socialLinks !== undefined) {
-    user.socialLinks = req.body.socialLinks;
   }
 
   const updatedUser = await user.save();
@@ -62,7 +61,7 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get user by ID (with posts & subscriptions) - Admin
+// @desc    Get user by ID (for admin dashboard)
 // @route   GET /api/users/:id
 // @access  Private/Admin
 export const getUserById = asyncHandler(async (req, res) => {
@@ -74,7 +73,6 @@ export const getUserById = asyncHandler(async (req, res) => {
   }
 
   const posts = await Post.find({ author: user._id }).sort({ createdAt: -1 });
-
   const subscriptions = await Subscription.find({ user: user._id }).populate(
     "author",
     "name email"
@@ -83,7 +81,7 @@ export const getUserById = asyncHandler(async (req, res) => {
   res.json({ user, posts, subscriptions });
 });
 
-// @desc    Public author page (no login required)
+// @desc    Public Author Page (visible without login)
 // @route   GET /api/users/author/:id
 // @access  Public
 export const getAuthorPage = asyncHandler(async (req, res) => {
@@ -108,12 +106,13 @@ export const getAuthorPage = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get all users - Admin
+// @desc    Get all users (for admin)
 // @route   GET /api/users
 // @access  Private/Admin
 export const getUsers = asyncHandler(async (req, res) => {
   const users = await User.find({}).select("-password");
   res.json(users);
 });
+
 
 

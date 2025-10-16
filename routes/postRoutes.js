@@ -18,15 +18,14 @@ const router = express.Router();
       PUBLIC ROUTES
 ======================= */
 
-// Get all posts
+// Get all posts (with optional search)
 router.get("/", getAllPosts);
 
-// Get post by slug
+// Get post by slug (shareable link)
 router.get("/slug/:slug", getPostBySlug);
 
 // Get post by ID
 router.get("/:id", getPostById);
-
 
 /* =======================
       PRIVATE ROUTES
@@ -50,3 +49,4 @@ router.post("/:id/comment", protect, addComment);
 router.get("/:id/analytics", protect, getPostAnalytics);
 
 export default router;
+

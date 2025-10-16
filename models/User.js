@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters"],
-      select: false, // never return password in queries by default
+      select: false, // never return password by default
     },
     bio: {
       type: String,
@@ -28,9 +28,9 @@ const userSchema = new mongoose.Schema(
     },
     profilePic: {
       type: String,
-      default: "", // can store a URL or /uploads/file.jpg
+      default: "", // can store /uploads/file.jpg or external URL
     },
-    social: {
+    socialLinks: {
       website: { type: String, default: "" },
       twitter: { type: String, default: "" },
       linkedin: { type: String, default: "" },
@@ -38,7 +38,7 @@ const userSchema = new mongoose.Schema(
     },
     isAdmin: {
       type: Boolean,
-      default: false, // normal users by default
+      default: false,
     },
   },
   {
@@ -46,7 +46,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Encrypt password before saving (only if modified/new)
+// Encrypt password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
@@ -63,6 +63,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 const User = mongoose.model("User", userSchema);
 
 export default User;
+
 
 
 
