@@ -57,11 +57,7 @@ Includes authentication, post management, comments, profile pages, and responsiv
 - **Backend**: Node.js, Express.js, MongoDB, Mongoose  
 - **Deployment**: Netlify (frontend) + Render (backend)  
 
----
 
-## Notes
-- React Router warnings about `future` flags may appear in console — they are safe to ignore.  
-- Fully tested on both desktop and mobile.  
 
----
+
   

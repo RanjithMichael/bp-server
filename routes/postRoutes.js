@@ -14,9 +14,7 @@ import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-/* =======================
-      PUBLIC ROUTES
-======================= */
+// PUBLIC ROUTES
 
 // Get all posts (supports ?search= keyword)
 router.get("/", getAllPosts);
@@ -27,9 +25,7 @@ router.get("/slug/:slug", getPostBySlug);
 // Get post by ID
 router.get("/id/:id", getPostById); // changed path to /id/:id to avoid conflict
 
-/* =======================
-      PRIVATE ROUTES
-======================= */
+// PRIVATE ROUTES
 
 // Create a new post
 router.post("/", protect, createPost);
