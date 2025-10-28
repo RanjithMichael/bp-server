@@ -87,7 +87,7 @@ if (process.env.NODE_ENV === "production") {
   const clientBuildPath = path.join(__root, "client", "dist");
   app.use(express.static(clientBuildPath));
 
-  // Catch-all: send React index.html for non-API routes (fixes 404 on shared URLs)
+  //Catch-all: send React index.html for non-API routes (fixes 404 on shared URLs)
   app.get("*", (req, res) => {
     if (req.originalUrl.startsWith("/api")) return res.status(404).json({ message: "API route not found" });
     res.sendFile(path.join(clientBuildPath, "index.html"));
