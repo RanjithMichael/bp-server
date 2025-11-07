@@ -33,10 +33,10 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan("dev"));
 
-// ✅ CORS Configuration
+// CORS Configuration
 const allowedOrigins = [
   "http://localhost:5173", // local dev
-  "https://bloggingplatformclient.netlify.app", // your Netlify frontend
+  "https://bloggingplatformclient.netlify.app", 
 ];
 app.use(
   cors({
