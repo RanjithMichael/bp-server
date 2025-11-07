@@ -3,15 +3,27 @@ import {
   createSubscription,
   getMySubscriptions,
   deleteSubscription,
+  getSubscriptionStatus,
+  subscribeAuthor,
+  unsubscribeAuthor,
 } from "../controllers/subscriptionController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-router.route("/")
-  .post(protect, createSubscription)
-  .get(protect, getMySubscriptions);
+// General subscription routes (for author or category via body)
+router
+  .route("/")
+  .post(protect, createSubscription)   // POST /api/subscriptions
+  .get(protect, getMySubscriptions);   // GET /api/subscriptions
 
+// Delete by subscription ID (old method)
 router.route("/:id").delete(protect, deleteSubscription);
 
+// Author-specific routes (used by frontend component)
+router.get("/status/:authorId", protect, getSubscriptionStatus);  // GET /api/subscriptions/status/:authorId
+router.post("/:authorId", protect, subscribeAuthor);               // POST /api/subscriptions/:authorId
+router.delete("/:authorId", protect, unsubscribeAuthor);           // DELETE /api/subscriptions/:authorId
+
 export default router;
+
