@@ -33,10 +33,10 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan("dev"));
 
-// CORS 
+// ✅ CORS Configuration
 const allowedOrigins = [
-  "http://localhost:5173",
-  "https://bloggingplatformclient.netlify.app",
+  "http://localhost:5173", // local dev
+  "https://bloggingplatformclient.netlify.app", // your Netlify frontend
 ];
 app.use(
   cors({
@@ -51,11 +51,10 @@ app.use(
   })
 );
 
-// STATIC UPLOADS 
-// Serves uploaded images (profile pics, post images, etc.)
+// Static uploads (for images, etc.)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// API ROUTES 
+// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
@@ -63,8 +62,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/comments", commentRoutes);
 
-// SLUG ROUTE (for sharing posts) 
-// This supports links like /post/:slug — used by share button
+// Slug route (for shared post links)
 import Post from "./models/Post.js";
 app.get("/api/posts/slug/:slug", async (req, res) => {
   try {
@@ -79,27 +77,12 @@ app.get("/api/posts/slug/:slug", async (req, res) => {
   }
 });
 
-// DEPLOYMENT SETUP 
-const __root = path.resolve();
+// Root route (for Render health check)
+app.get("/", (req, res) => {
+  res.send("Blogging Platform Backend is running!");
+});
 
-// Serve frontend from client/dist (Vite build)
-if (process.env.NODE_ENV === "production") {
-  const clientBuildPath = path.join(__root, "client", "dist");
-  app.use(express.static(clientBuildPath));
-
-  //Catch-all: send React index.html for non-API routes (fixes 404 on shared URLs)
-  app.get("*", (req, res) => {
-    if (req.originalUrl.startsWith("/api")) return res.status(404).json({ message: "API route not found" });
-    res.sendFile(path.join(clientBuildPath, "index.html"));
-  });
-} else {
-  // Development test route
-  app.get("/", (req, res) => {
-    res.send("API is running 🚀");
-  });
-}
-
-// ERROR HANDLERS
+// Error handlers
 app.use(notFound);
 app.use(errorHandler);
 
