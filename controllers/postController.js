@@ -37,27 +37,45 @@ export const createPost = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get all posts (supports search)
+ * @desc    Get all posts (supports search + pagination)
  * @route   GET /api/posts
  * @access  Public
+ * @query   ?page=1&limit=10&search=keyword
  */
 export const getAllPosts = asyncHandler(async (req, res) => {
-  const keyword = req.query.search
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 6;
+  const skip = (page - 1) * limit;
+  const search = req.query.search || "";
+
+  const filter = search
     ? {
         $or: [
-          { title: { $regex: req.query.search, $options: "i" } },
-          { content: { $regex: req.query.search, $options: "i" } },
-          { category: { $regex: req.query.search, $options: "i" } },
-          { tags: { $regex: req.query.search, $options: "i" } },
+          { title: { $regex: search, $options: "i" } },
+          { content: { $regex: search, $options: "i" } },
+          { category: { $regex: search, $options: "i" } },
+          { tags: { $regex: search, $options: "i" } },
         ],
       }
     : {};
 
-  const posts = await Post.find(keyword)
-    .sort({ createdAt: -1 })
-    .populate("author", "name email profilePic");
+  // Fetch posts and total count in parallel (faster)
+  const [posts, totalPosts] = await Promise.all([
+    Post.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("author", "name profilePic")
+      .lean(),
+    Post.countDocuments(filter),
+  ]);
 
-  res.status(200).json(posts);
+  res.status(200).json({
+    posts,
+    currentPage: page,
+    totalPages: Math.ceil(totalPosts / limit),
+    totalPosts,
+  });
 });
 
 /**
@@ -106,7 +124,8 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
 export const getPostsByAuthor = asyncHandler(async (req, res) => {
   const posts = await Post.find({ author: req.params.id })
     .sort({ createdAt: -1 })
-    .populate("author", "name email profilePic bio socialLinks");
+    .populate("author", "name email profilePic bio socialLinks")
+    .lean();
 
   if (!posts || posts.length === 0) {
     return res.status(404).json({ message: "No posts found for this author" });
@@ -187,7 +206,6 @@ export const sharePost = asyncHandler(async (req, res) => {
   post.analytics.sharedBy.push(req.user._id);
   await post.save();
 
-  // Return shareable URL for frontend (Netlify + Render compatible)
   const shareUrl = `${process.env.FRONTEND_URL}/post/${post.slug}`;
 
   res.status(200).json({
@@ -225,9 +243,10 @@ export const addComment = asyncHandler(async (req, res) => {
     "name profilePic"
   );
 
-  res
-    .status(200)
-    .json({ message: "Comment added", comments: updatedPost.analytics.comments });
+  res.status(200).json({
+    message: "Comment added",
+    comments: updatedPost.analytics.comments,
+  });
 });
 
 /**
