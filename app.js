@@ -62,21 +62,6 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/comments", commentRoutes);
 
-// Slug route (for shared post links)
-import Post from "./models/Post.js";
-app.get("/api/posts/slug/:slug", async (req, res) => {
-  try {
-    const post = await Post.findOne({ slug: req.params.slug })
-      .populate("author", "username name _id")
-      .populate("categories tags", "name slug");
-    if (!post) return res.status(404).json({ message: "Post not found" });
-    res.json(post);
-  } catch (error) {
-    console.error("Slug fetch error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
 // Root route (for Render health check)
 app.get("/", (req, res) => {
   res.send("Blogging Platform Backend is running!");
