@@ -2,11 +2,8 @@ import asyncHandler from "express-async-handler";
 import Post from "../models/Post.js";
 import slugify from "slugify";
 
-/**
- * @desc    Create a new post
- * @route   POST /api/posts
- * @access  Private
- */
+// CREATE POST
+
 export const createPost = asyncHandler(async (req, res) => {
   const { title, content, category, tags } = req.body;
 
@@ -14,7 +11,7 @@ export const createPost = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Title and content are required" });
   }
 
-  // Generate a unique slug (safe for duplicates)
+  // Generate unique slug
   let baseSlug = slugify(title, { lower: true, strict: true });
   let slug = baseSlug;
   let count = 1;
@@ -33,15 +30,11 @@ export const createPost = asyncHandler(async (req, res) => {
   });
 
   const createdPost = await post.save();
-  res.status(201).json(createdPost);
+  res.status(201).json({ success: true, post: createdPost });
 });
 
-/**
- * @desc    Get all posts (supports search + pagination)
- * @route   GET /api/posts
- * @access  Public
- * @query   ?page=1&limit=10&search=keyword
- */
+// GET ALL POSTS WITH SEARCH + PAGINATION/api/posts?page=1&limit=10&search=abc
+
 export const getAllPosts = asyncHandler(async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 6;
@@ -59,7 +52,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
       }
     : {};
 
-  // Fetch posts and total count in parallel (faster)
+  // Parallel (faster)
   const [posts, totalPosts] = await Promise.all([
     Post.find(filter)
       .sort({ createdAt: -1 })
@@ -71,6 +64,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
   ]);
 
   res.status(200).json({
+    success: true,
     posts,
     currentPage: page,
     totalPages: Math.ceil(totalPosts / limit),
@@ -78,11 +72,8 @@ export const getAllPosts = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Get a post by ID (increments views)
- * @route   GET /api/posts/id/:id
- * @access  Public
- */
+// GET POST BY ID + INCREMENT VIEWS
+
 export const getPostById = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id).populate(
     "author",
@@ -91,17 +82,14 @@ export const getPostById = asyncHandler(async (req, res) => {
 
   if (!post) return res.status(404).json({ message: "Post not found" });
 
-  post.analytics.views = (post.analytics.views || 0) + 1;
+  post.analytics.views += 1;
   await post.save();
 
-  res.status(200).json(post);
+  res.status(200).json({ success: true, post });
 });
 
-/**
- * @desc    Get a post by slug (used for share links)
- * @route   GET /api/posts/slug/:slug
- * @access  Public
- */
+// GET POST BY SLUG + INCREMENT VIEWS
+
 export const getPostBySlug = asyncHandler(async (req, res) => {
   const post = await Post.findOne({ slug: req.params.slug }).populate(
     "author",
@@ -110,96 +98,83 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
 
   if (!post) return res.status(404).json({ message: "Post not found" });
 
-  post.analytics.views = (post.analytics.views || 0) + 1;
+  post.analytics.views += 1;
   await post.save();
 
-  res.status(200).json(post);
+  res.status(200).json({ success: true, post });
 });
 
-/**
- * @desc    Get all posts by a specific author
- * @route   GET /api/posts/author/:id
- * @access  Public
- */
+// GET POSTS BY AUTHOR
+
 export const getPostsByAuthor = asyncHandler(async (req, res) => {
   const posts = await Post.find({ author: req.params.id })
     .sort({ createdAt: -1 })
     .populate("author", "name email profilePic bio socialLinks")
     .lean();
 
-  if (!posts || posts.length === 0) {
+  if (!posts.length) {
     return res.status(404).json({ message: "No posts found for this author" });
   }
 
-  res.status(200).json(posts);
+  res.status(200).json({ success: true, posts });
 });
 
-/**
- * @desc    Like a post
- * @route   POST /api/posts/:id/like
- * @access  Private
- */
+// LIKE POST
+
 export const likePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
+
   if (!post) return res.status(404).json({ message: "Post not found" });
 
-  const alreadyLiked = post.analytics.likedBy.some(
-    (id) => id.toString() === req.user._id.toString()
-  );
-
-  if (alreadyLiked) {
-    return res.status(400).json({ message: "You already liked this post" });
+  if (post.analytics.likedBy.includes(req.user._id)) {
+    return res.status(400).json({ message: "Already liked" });
   }
 
   post.analytics.likes += 1;
   post.analytics.likedBy.push(req.user._id);
   await post.save();
 
-  res.status(200).json({ message: "Post liked", likes: post.analytics.likes });
+  res.status(200).json({
+    success: true,
+    message: "Liked",
+    likes: post.analytics.likes,
+  });
 });
 
-/**
- * @desc    Unlike a post
- * @route   DELETE /api/posts/:id/like
- * @access  Private
- */
+// UNLIKE POST
+
 export const unlikePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
+
   if (!post) return res.status(404).json({ message: "Post not found" });
 
-  const hasLiked = post.analytics.likedBy.some(
-    (id) => id.toString() === req.user._id.toString()
-  );
-
-  if (!hasLiked) {
-    return res.status(400).json({ message: "You haven’t liked this post" });
+  if (!post.analytics.likedBy.includes(req.user._id)) {
+    return res.status(400).json({ message: "You haven't liked this post" });
   }
 
-  post.analytics.likes = Math.max(0, post.analytics.likes - 1);
+  post.analytics.likes -= 1;
   post.analytics.likedBy = post.analytics.likedBy.filter(
     (id) => id.toString() !== req.user._id.toString()
   );
 
   await post.save();
 
-  res.status(200).json({ message: "Post unliked", likes: post.analytics.likes });
+  res.status(200).json({
+    success: true,
+    message: "Unliked",
+    likes: post.analytics.likes,
+  });
 });
 
-/**
- * @desc    Share a post (increments shares)
- * @route   POST /api/posts/:id/share
- * @access  Private
- */
+// SHARE POST
+
 export const sharePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
+
   if (!post) return res.status(404).json({ message: "Post not found" });
 
-  const alreadyShared = post.analytics.sharedBy.some(
-    (id) => id.toString() === req.user._id.toString()
-  );
-
-  if (alreadyShared) {
-    return res.status(400).json({ message: "You already shared this post" });
+  if (post.analytics.sharedBy.includes(req.user._id)) {
+    return res.status(400).json({ message: "Already shared" });
   }
 
   post.analytics.shares += 1;
@@ -209,30 +184,30 @@ export const sharePost = asyncHandler(async (req, res) => {
   const shareUrl = `${process.env.FRONTEND_URL}/post/${post.slug}`;
 
   res.status(200).json({
-    message: "Post shared successfully",
-    shares: post.analytics.shares,
+    success: true,
+    message: "Shared successfully",
     shareUrl,
+    shares: post.analytics.shares,
   });
 });
 
-/**
- * @desc    Add a comment
- * @route   POST /api/posts/:id/comment
- * @access  Private
- */
+// ADD COMMENT
+
 export const addComment = asyncHandler(async (req, res) => {
   const { text } = req.body;
-  const post = await Post.findById(req.params.id);
-  if (!post) return res.status(404).json({ message: "Post not found" });
 
   if (!text || text.trim() === "") {
-    return res.status(400).json({ message: "Comment text cannot be empty" });
+    return res.status(400).json({ message: "Comment cannot be empty" });
   }
+
+  const post = await Post.findById(req.params.id);
+
+  if (!post) return res.status(404).json({ message: "Post not found" });
 
   const comment = {
     user: req.user._id,
     text,
-    createdAt: Date.now(),
+    createdAt: new Date(),
   };
 
   post.analytics.comments.push(comment);
@@ -244,23 +219,23 @@ export const addComment = asyncHandler(async (req, res) => {
   );
 
   res.status(200).json({
+    success: true,
     message: "Comment added",
     comments: updatedPost.analytics.comments,
   });
 });
 
-/**
- * @desc    Get analytics (views, likes, shares, comments)
- * @route   GET /api/posts/:id/analytics
- * @access  Private
- */
+// GET POST ANALYTICS
+
 export const getPostAnalytics = asyncHandler(async (req, res) => {
-  const post = await Post.findById(req.params.id).populate(
-    "analytics.comments.user",
-    "name profilePic"
-  );
+  const post = await Post.findById(req.params.id)
+    .populate("analytics.comments.user", "name profilePic")
+    .lean();
 
   if (!post) return res.status(404).json({ message: "Post not found" });
 
-  res.status(200).json(post.analytics);
+  res.status(200).json({
+    success: true,
+    analytics: post.analytics,
+  });
 });
