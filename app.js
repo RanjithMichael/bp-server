@@ -33,7 +33,7 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan("dev"));
 
-// ✅ CORS Configuration (FINAL – Vite safe)
+// ✅ CORS Configuration 
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -65,7 +65,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/comments", commentRoutes);
 
-// Root route (for Render health check)
+// Root route 
 app.get("/", (req, res) => {
   res.send("Blogging Platform Backend is running!");
 });
