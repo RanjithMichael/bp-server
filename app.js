@@ -33,19 +33,22 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan("dev"));
 
-// CORS Configuration
-const allowedOrigins = [
-  "http://localhost:5173", // local dev
-  "https://bloggingplatformclient.netlify.app", 
-];
+// ✅ CORS Configuration (FINAL – Vite safe)
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+    origin: (origin, callback) => {
+      // Allow server-to-server, Postman, Render health checks
+      if (!origin) return callback(null, true);
+
+      // Allow all localhost Vite ports + Netlify
+      if (
+        origin.startsWith("http://localhost:517") ||
+        origin === "https://bloggingplatformclient.netlify.app"
+      ) {
+        return callback(null, true);
       }
+
+      return callback(null, false);
     },
     credentials: true,
   })

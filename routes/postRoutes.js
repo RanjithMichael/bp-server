@@ -4,9 +4,7 @@ import {
   getAllPosts,
   getPostById,
   getPostBySlug,
-  likePost,
-  unlikePost,
-  sharePost,
+  toggleLikePost,
   addComment,
   getPostAnalytics,
 } from "../controllers/postController.js";
@@ -14,33 +12,29 @@ import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// PUBLIC ROUTES
+//PUBLIC ROUTES 
 
-// Get all posts (supports ?search= keyword)
+// Get all posts (?search=keyword)
 router.get("/", getAllPosts);
 
-// Get post by slug (must come BEFORE :id route)
+// Get post by slug (must come before /id)
 router.get("/slug/:slug", getPostBySlug);
 
 // Get post by ID
-router.get("/id/:id", getPostById); // changed path to /id/:id to avoid conflict
+router.get("/id/:id", getPostById);
 
-// PRIVATE ROUTES
+// Get analytics (public read)
+router.get("/:id/analytics", getPostAnalytics);
 
-// Create a new post
+//PRIVATE ROUTES 
+
+// Create new post
 router.post("/", protect, createPost);
 
-// Like / Unlike a post
-router.post("/:id/like", protect, likePost);
-router.delete("/:id/like", protect, unlikePost);
+// Like / Unlike (toggle)
+router.put("/:id/like", protect, toggleLikePost);
 
-// Share a post (increments share count)
-router.post("/:id/share", protect, sharePost);
-
-// Add comment to a post
+// Add comment
 router.post("/:id/comment", protect, addComment);
-
-// Get analytics (views, likes, shares, comments)
-router.get("/:id/analytics", protect, getPostAnalytics);
 
 export default router;

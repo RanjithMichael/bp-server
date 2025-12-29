@@ -1,6 +1,24 @@
 import mongoose from "mongoose";
 import slugify from "slugify";
 
+//Comment Schema 
+const commentSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    text: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  { timestamps: true }
+);
+
+//Post Schema 
 const postSchema = new mongoose.Schema(
   {
     title: {
@@ -9,74 +27,100 @@ const postSchema = new mongoose.Schema(
       trim: true,
       minlength: 3,
     },
+
     slug: {
       type: String,
       unique: true,
-      index: true, // better query performance
+      index: true,
     },
+
     content: {
       type: String,
       required: [true, "Post content is required"],
     },
+
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "Author is required"],
+      required: true,
     },
+
     category: {
       type: String,
       default: "General",
       trim: true,
     },
+
     tags: {
       type: [String],
       default: [],
     },
 
-    // Analytics & Interactions
+    //Analytics
     analytics: {
-      views: { type: Number, default: 0 },
-      likes: { type: Number, default: 0 },
-      likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-      shares: { type: Number, default: 0 },
-      sharedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-      comments: [
+      views: {
+        type: Number,
+        default: 0,
+      },
+
+      likes: [
         {
-          user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-          text: { type: String, required: true, trim: true },
-          createdAt: { type: Date, default: Date.now },
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
         },
       ],
+
+      shares: {
+        type: Number,
+        default: 0,
+      },
     },
+
+    //Comments
+    comments: [commentSchema],
   },
   { timestamps: true }
 );
 
-// Auto-generate unique slug before saving
+//Slug Generator
 postSchema.pre("validate", async function (next) {
-  if (this.title && (!this.slug || this.isModified("title"))) {
-    let baseSlug = slugify(this.title, { lower: true, strict: true });
-    let slug = baseSlug;
-    let count = 1;
+  if (!this.title || !this.isModified("title")) return next();
 
-    // Ensure slug uniqueness in DB
-    while (await mongoose.models.Post.exists({ slug })) {
-      slug = `${baseSlug}-${count++}`;
-    }
+  const baseSlug = slugify(this.title, {
+    lower: true,
+    strict: true,
+  });
 
-    this.slug = slug;
+  let slug = baseSlug;
+  let count = 1;
+
+  while (
+    await mongoose.models.Post.exists({
+      slug,
+      _id: { $ne: this._id },
+    })
+  ) {
+    slug = `${baseSlug}-${count++}`;
   }
+
+  this.slug = slug;
   next();
 });
 
-// Optional: virtual for comments count, etc.
-postSchema.virtual("commentCount").get(function () {
-  return this.analytics.comments.length;
+//Virtuals
+postSchema.virtual("likesCount").get(function () {
+  return this.analytics.likes.length;
 });
 
+postSchema.virtual("commentsCount").get(function () {
+  return this.comments.length;
+});
+
+//Model 
 const Post = mongoose.model("Post", postSchema);
 
 export default Post;
+
 
 
 
