@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import slugify from "slugify";
 
-//Comment Schema 
+// Comment Schema
 const commentSchema = new mongoose.Schema(
   {
     user: {
@@ -18,7 +18,7 @@ const commentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-//Post Schema 
+// Post Schema
 const postSchema = new mongoose.Schema(
   {
     title: {
@@ -56,33 +56,31 @@ const postSchema = new mongoose.Schema(
       default: [],
     },
 
-    //Analytics
+    // Analytics
     analytics: {
       views: {
         type: Number,
         default: 0,
       },
-
       likes: [
         {
           type: mongoose.Schema.Types.ObjectId,
           ref: "User",
         },
       ],
-
       shares: {
         type: Number,
         default: 0,
       },
     },
 
-    //Comments
+    // Comments
     comments: [commentSchema],
   },
   { timestamps: true }
 );
 
-//Slug Generator
+// Slug Generator
 postSchema.pre("validate", async function (next) {
   if (!this.title || !this.isModified("title")) return next();
 
@@ -107,19 +105,23 @@ postSchema.pre("validate", async function (next) {
   next();
 });
 
-//Virtuals
+// Virtuals (IMPORTANT for analytics UI)
 postSchema.virtual("likesCount").get(function () {
-  return this.analytics.likes.length;
+  return this.analytics?.likes?.length || 0;
 });
 
 postSchema.virtual("commentsCount").get(function () {
   return this.comments.length;
 });
 
-//Model 
-const Post = mongoose.model("Post", postSchema);
+// Enable virtuals in API response
+postSchema.set("toJSON", { virtuals: true });
+postSchema.set("toObject", { virtuals: true });
 
+// Model
+const Post = mongoose.model("Post", postSchema);
 export default Post;
+
 
 
 
