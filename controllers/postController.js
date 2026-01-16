@@ -15,11 +15,13 @@ export const createPost = asyncHandler(async (req, res) => {
   }
 
   const post = await Post.create({
-    author: req.user._id,
+    author: req.user?._id, // ✅ ensure author is set from authMiddleware
     title,
     content,
     category: category || "General",
     tags: Array.isArray(tags) ? tags : [],
+    isDeleted: false, // ✅ default flag to prevent showing removed posts
+    status: "published", // ✅ default status
     analytics: {
       views: 0,
       likes: [],
@@ -27,9 +29,11 @@ export const createPost = asyncHandler(async (req, res) => {
     },
   });
 
+  const populatedPost = await Post.findById(post._id).populate("author", "name profilePic");
+
   res.status(201).json({
     success: true,
-    post,
+    post: populatedPost,
   });
 });
 
@@ -44,16 +48,18 @@ export const getAllPosts = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
   const search = req.query.search?.trim() || "";
 
-  const filter = search
-    ? {
-        $or: [
-          { title: { $regex: search, $options: "i" } },
-          { content: { $regex: search, $options: "i" } },
-          { category: { $regex: search, $options: "i" } },
-          { tags: { $in: [new RegExp(search, "i")] } },
-        ],
-      }
-    : {};
+  const filter = {
+    isDeleted: false, // ✅ exclude removed posts
+    status: "published", // ✅ only published posts
+    ...(search && {
+      $or: [
+        { title: { $regex: search, $options: "i" } },
+        { content: { $regex: search, $options: "i" } },
+        { category: { $regex: search, $options: "i" } },
+        { tags: { $in: [new RegExp(search, "i")] } },
+      ],
+    }),
+  };
 
   const [posts, totalPosts] = await Promise.all([
     Post.find(filter)
@@ -79,13 +85,13 @@ export const getAllPosts = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const getPostById = asyncHandler(async (req, res) => {
-  const post = await Post.findById(req.params.id)
+  const post = await Post.findOne({ _id: req.params.id, isDeleted: false })
     .populate("author", "name email profilePic")
     .populate("comments.user", "name profilePic");
 
   if (!post) {
     res.status(404);
-    throw new Error("Post not found");
+    throw new Error("Post not found or removed");
   }
 
   res.json({
@@ -100,13 +106,13 @@ export const getPostById = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const getPostBySlug = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ slug: req.params.slug })
+  const post = await Post.findOne({ slug: req.params.slug, isDeleted: false })
     .populate("author", "name email profilePic")
     .populate("comments.user", "name profilePic");
 
   if (!post) {
     res.status(404);
-    throw new Error("Post not found");
+    throw new Error("Post not found or removed");
   }
 
   post.analytics ??= { views: 0, likes: [], shares: 0 };
@@ -126,20 +132,18 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const toggleLikePost = asyncHandler(async (req, res) => {
-  const post = await Post.findById(req.params.id);
+  const post = await Post.findOne({ _id: req.params.id, isDeleted: false });
 
   if (!post) {
     res.status(404);
-    throw new Error("Post not found");
+    throw new Error("Post not found or removed");
   }
 
   post.analytics ??= { views: 0, likes: [], shares: 0 };
   post.analytics.likes ??= [];
 
   const userId = req.user._id.toString();
-  const index = post.analytics.likes.findIndex(
-    (id) => id.toString() === userId
-  );
+  const index = post.analytics.likes.findIndex((id) => id.toString() === userId);
 
   let liked = false;
 
@@ -174,11 +178,11 @@ export const addComment = asyncHandler(async (req, res) => {
     throw new Error("Comment cannot be empty");
   }
 
-  const post = await Post.findById(req.params.id);
+  const post = await Post.findOne({ _id: req.params.id, isDeleted: false });
 
   if (!post) {
     res.status(404);
-    throw new Error("Post not found");
+    throw new Error("Post not found or removed");
   }
 
   post.comments.push({
@@ -204,11 +208,11 @@ export const addComment = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const getPostAnalytics = asyncHandler(async (req, res) => {
-  const post = await Post.findById(req.params.id);
+  const post = await Post.findOne({ _id: req.params.id, isDeleted: false });
 
   if (!post) {
     res.status(404);
-    throw new Error("Post not found");
+    throw new Error("Post not found or removed");
   }
 
   post.analytics ??= { views: 0, likes: [], shares: 0 };

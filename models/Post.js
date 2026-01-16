@@ -56,6 +56,17 @@ const postSchema = new mongoose.Schema(
       default: [],
     },
 
+    // ✅ New fields for post lifecycle
+    status: {
+      type: String,
+      enum: ["draft", "published"],
+      default: "published",
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
     // Analytics
     analytics: {
       views: {
