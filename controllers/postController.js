@@ -20,8 +20,8 @@ export const createPost = asyncHandler(async (req, res) => {
     content,
     category: category || "General",
     tags: Array.isArray(tags) ? tags : [],
-    isDeleted: false, // ✅ default flag to prevent showing removed posts
-    status: "published", // ✅ default status
+    isDeleted: false,
+    status: "published",
     analytics: {
       views: 0,
       likes: [],
@@ -49,8 +49,8 @@ export const getAllPosts = asyncHandler(async (req, res) => {
   const search = req.query.search?.trim() || "";
 
   const filter = {
-    isDeleted: false, // ✅ exclude removed posts
-    status: "published", // ✅ only published posts
+    isDeleted: false,
+    status: "published",
     ...(search && {
       $or: [
         { title: { $regex: search, $options: "i" } },
@@ -225,5 +225,21 @@ export const getPostAnalytics = asyncHandler(async (req, res) => {
       shares: post.analytics.shares,
       comments: post.comments.length,
     },
+  });
+});
+
+/**
+ * @desc    Get posts created by a specific user
+ * @route   GET /api/users/:id/posts
+ * @access  Private (or Public if profile is visible)
+ */
+export const getUserPosts = asyncHandler(async (req, res) => {
+  const posts = await Post.find({ author: req.params.id, isDeleted: false })
+    .populate("author", "name username profilePic")
+    .sort({ createdAt: -1 });
+
+  res.json({
+    success: true,
+    posts,
   });
 });

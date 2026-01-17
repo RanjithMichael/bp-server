@@ -6,6 +6,7 @@ import {
   getUsers,
   getAuthorPage, // public author page controller
 } from "../controllers/userController.js";
+import { getUserPosts } from "../controllers/postController.js"; // ✅ import new controller
 import { protect, admin } from "../middlewares/authMiddleware.js";
 import multer from "multer";
 import path from "path";
@@ -23,6 +24,9 @@ const upload = multer({ storage });
 
 // Public Author Page (no login required)
 router.get("/author/:id", getAuthorPage);
+
+// ✅ New route: Get posts created by a specific user
+router.get("/:id/posts", protect, getUserPosts);
 
 // Current logged-in user routes
 router
