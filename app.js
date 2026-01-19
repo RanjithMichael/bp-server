@@ -1,3 +1,4 @@
+
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -27,20 +28,20 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Middleware
-app.use(express.json());
-app.use(helmet());
-app.use(compression());
-app.use(morgan("dev"));
+// Core middleware
+app.use(express.json({ limit: "10mb" })); // handle large payloads safely
+app.use(helmet()); // security headers
+app.use(compression()); // gzip compression
+app.use(morgan("dev")); // request logging
 
-// ✅ CORS Configuration 
+// ✅ CORS Configuration
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow server-to-server, Postman, Render health checks
       if (!origin) return callback(null, true);
 
-      // Allow all localhost Vite ports + Netlify
+      // Allow all localhost Vite ports + Netlify client
       if (
         origin.startsWith("http://localhost:517") ||
         origin === "https://bloggingplatformclient.netlify.app"
@@ -48,7 +49,7 @@ app.use(
         return callback(null, true);
       }
 
-      return callback(null, false);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
@@ -65,9 +66,9 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/comments", commentRoutes);
 
-// Root route 
+// Root route
 app.get("/", (req, res) => {
-  res.send("Blogging Platform Backend is running!");
+  res.send("✅ Blogging Platform Backend is running!");
 });
 
 // Error handlers

@@ -14,6 +14,11 @@ const commentSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // optional: link back to post if you want standalone comment queries
+    post: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+    },
   },
   { timestamps: true }
 );
@@ -56,43 +61,38 @@ const postSchema = new mongoose.Schema(
       default: [],
     },
 
-    // ✅ New fields for post lifecycle
+    // ✅ Lifecycle status (removed replaces isDeleted)
     status: {
       type: String,
-      enum: ["draft", "published"],
+      enum: ["draft", "published", "removed"],
       default: "published",
-    },
-    isDeleted: {
-      type: Boolean,
-      default: false,
+      index: true,
     },
 
     // Analytics
-    analytics: {
-      views: {
-        type: Number,
-        default: 0,
-      },
-      likes: [
-        {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-      ],
-      shares: {
-        type: Number,
-        default: 0,
-      },
+    views: {
+      type: Number,
+      default: 0,
     },
+    shares: {
+      type: Number,
+      default: 0,
+    },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
 
-    // Comments
+    // Comments (embedded)
     comments: [commentSchema],
   },
   { timestamps: true }
 );
 
 // Slug Generator
-postSchema.pre("validate", async function (next) {
+postSchema.pre("save", async function (next) {
   if (!this.title || !this.isModified("title")) return next();
 
   const baseSlug = slugify(this.title, {
@@ -116,23 +116,29 @@ postSchema.pre("validate", async function (next) {
   next();
 });
 
-// Virtuals (IMPORTANT for analytics UI)
+// Virtuals (for analytics UI)
 postSchema.virtual("likesCount").get(function () {
-  return this.analytics?.likes?.length || 0;
+  return this.likes?.length || 0;
 });
 
 postSchema.virtual("commentsCount").get(function () {
-  return this.comments.length;
+  return this.comments?.length || 0;
+});
+
+postSchema.virtual("sharesCount").get(function () {
+  return this.shares || 0;
 });
 
 // Enable virtuals in API response
 postSchema.set("toJSON", { virtuals: true });
 postSchema.set("toObject", { virtuals: true });
 
-// Model
+// Indexes for performance
+postSchema.index({ author: 1, status: 1 });
+postSchema.index({ slug: 1 });
+
 const Post = mongoose.model("Post", postSchema);
 export default Post;
-
 
 
 
