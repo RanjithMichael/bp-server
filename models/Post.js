@@ -14,7 +14,7 @@ const commentSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    // optional: link back to post if you want standalone comment queries
+    // Optional: link back to post if you want standalone comment queries
     post: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
@@ -61,7 +61,7 @@ const postSchema = new mongoose.Schema(
       default: [],
     },
 
-    // ✅ Lifecycle status (removed replaces isDeleted)
+    // ✅ Lifecycle status
     status: {
       type: String,
       enum: ["draft", "published", "removed"],
@@ -70,14 +70,10 @@ const postSchema = new mongoose.Schema(
     },
 
     // Analytics
-    views: {
-      type: Number,
-      default: 0,
-    },
-    shares: {
-      type: Number,
-      default: 0,
-    },
+    views: { type: Number, default: 0 },
+    shares: { type: Number, default: 0 },
+
+    // ✅ Likes stored as user references
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -85,7 +81,7 @@ const postSchema = new mongoose.Schema(
       },
     ],
 
-    // Comments (embedded)
+    // ✅ Embedded comments
     comments: [commentSchema],
   },
   { timestamps: true }
@@ -103,6 +99,7 @@ postSchema.pre("save", async function (next) {
   let slug = baseSlug;
   let count = 1;
 
+  // Ensure unique slug
   while (
     await mongoose.models.Post.exists({
       slug,
@@ -139,8 +136,3 @@ postSchema.index({ slug: 1 });
 
 const Post = mongoose.model("Post", postSchema);
 export default Post;
-
-
-
-
-
