@@ -1,4 +1,3 @@
-
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -7,16 +6,19 @@ import helmet from "helmet";
 import compression from "compression";
 import morgan from "morgan";
 import { fileURLToPath } from "url";
+
 import connectDB from "./config/db.js";
 import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
+import authorRoutes from "./routes/authorRoutes.js"; 
 import userRoutes from "./routes/userRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import tagRoutes from "./routes/tagRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 // Load env and connect DB
 dotenv.config();
@@ -24,49 +26,50 @@ connectDB();
 
 const app = express();
 
-// For __dirname in ES modules
+// For __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Core middleware
-app.use(express.json({ limit: "10mb" })); // handle large payloads safely
-app.use(helmet()); // security headers
-app.use(compression()); // gzip compression
-app.use(morgan("dev")); // request logging
+// Middleware
 
-// ✅ CORS Configuration
+app.use(express.json({ limit: "10mb" }));
+app.use(helmet());
+app.use(compression());
+app.use(morgan("dev"));
+
+// CORS
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow server-to-server, Postman, Render health checks
       if (!origin) return callback(null, true);
-
-      // Allow all localhost Vite ports + Netlify client
-      if (
-        origin.startsWith("http://localhost:517") ||
-        origin === "https://bloggingplatformclient.netlify.app"
-      ) {
-        return callback(null, true);
-      }
-
+      const allowedOrigins = [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "https://bloggingplatformclient.netlify.app",
+      ];
+      if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
 );
 
-// Static uploads (for images, etc.)
+// Static uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // API Routes
+
 app.use("/api/auth", authRoutes);
+app.use("/api/authors", authorRoutes); 
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/upload", uploadRoutes);
 
-// Root route
+// Root
 app.get("/", (req, res) => {
   res.send("✅ Blogging Platform Backend is running!");
 });
@@ -76,3 +79,6 @@ app.use(notFound);
 app.use(errorHandler);
 
 export default app;
+
+
+

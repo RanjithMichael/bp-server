@@ -7,7 +7,7 @@ import Post from "../models/Post.js";
  * @access  Private
  */
 export const createPost = asyncHandler(async (req, res) => {
-  const { title, content, category, tags } = req.body;
+  const { title, content, category, tags, image } = req.body;
 
   if (!title || !content) {
     res.status(400);
@@ -15,25 +15,19 @@ export const createPost = asyncHandler(async (req, res) => {
   }
 
   const post = await Post.create({
-    author: req.user?._id, // ensure author is set from authMiddleware
     title,
     content,
-    category: category || "General",
-    tags: Array.isArray(tags) ? tags : [],
+    category,
+    tags,
+    image,
+    slug: slugify(title, { lower: true }),
+    author: req.user._id, 
     status: "published",
-    views: 0,
-    shares: 0,
-    likes: [],
   });
-
-  const populatedPost = await Post.findById(post._id).populate(
-    "author",
-    "name profilePic"
-  );
 
   res.status(201).json({
     success: true,
-    post: populatedPost,
+    post,
   });
 });
 
@@ -105,8 +99,12 @@ export const getPostById = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const getPostBySlug = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ slug: req.params.slug, status: "published" })
-    .populate("author", "name email profilePic")
+  const post = await Post.findOne({
+    slug: req.params.slug,
+    isDeleted: { $ne: true }, // ✅ prevent removed posts
+    // status: "published",   // ❌ optional – avoid breaking older posts
+  })
+    .populate("author", "name username email profilePic")
     .populate("comments.user", "name profilePic");
 
   if (!post) {
@@ -114,10 +112,11 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
     throw new Error("Post not found or removed");
   }
 
-  post.views += 1;
+  // ✅ Safe views increment
+  post.views = (post.views || 0) + 1;
   await post.save();
 
-  res.json({
+  res.status(200).json({
     success: true,
     post,
   });

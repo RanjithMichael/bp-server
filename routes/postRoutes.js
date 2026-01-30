@@ -1,5 +1,6 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
+
 import {
   createPost,
   getAllPosts,
@@ -9,9 +10,19 @@ import {
   addComment,
   getPostAnalytics,
 } from "../controllers/postController.js";
+
 import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
+
+// Helper: validation middleware
+
+const validate = (validations) => async (req, res, next) => {
+  await Promise.all(validations.map((v) => v.run(req)));
+  const errors = validationResult(req);
+  if (errors.isEmpty()) return next();
+  res.status(400).json({ success: false, errors: errors.array() });
+};
 
 // PUBLIC ROUTES
 
@@ -24,50 +35,34 @@ router.get("/slug/:slug", getPostBySlug);
 // Get post by ID
 router.get("/:id", getPostById);
 
-// PRIVATE ROUTES
+// PRIVATE ROUTES (logged-in users)
+
 
 // Create new post
 router.post(
   "/",
   protect,
-  [
+  validate([
     body("title")
       .isLength({ min: 3 })
       .withMessage("Title must be at least 3 characters"),
     body("content").notEmpty().withMessage("Content is required"),
-  ],
-  (req, res, next) => {
-    // Handle validation errors consistently
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, errors: errors.array() });
-    }
-    next();
-  },
+  ]),
   createPost
 );
 
-// Like / Unlike post (toggle)
+// Like / Unlike post
 router.patch("/:id/like", protect, toggleLikePost);
 
 // Add comment
 router.post(
   "/:id/comments",
   protect,
-  [
-    body("text").notEmpty().withMessage("Comment cannot be empty"),
-  ],
-  (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, errors: errors.array() });
-    }
-    next();
-  },
+  validate([body("text").notEmpty().withMessage("Comment cannot be empty")]),
   addComment
 );
 
-// Get analytics (protected)
+// Get post analytics (protected)
 router.get("/:id/analytics", protect, getPostAnalytics);
 
 export default router;
