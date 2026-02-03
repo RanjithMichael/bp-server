@@ -1,4 +1,5 @@
 import asyncHandler from "express-async-handler";
+import slugify from "slugify";
 import Post from "../models/Post.js";
 
 /**
@@ -10,8 +11,11 @@ export const createPost = asyncHandler(async (req, res) => {
   const { title, content, category, tags, image } = req.body;
 
   if (!title || !content) {
-    res.status(400);
-    throw new Error("Title and content are required");
+    return res.status(400).json({ success: false, message: "Title and content are required" });
+  }
+
+  if (!req.user || !req.user._id) {
+    return res.status(401).json({ success: false, message: "Unauthorized: No user found" });
   }
 
   const post = await Post.create({
@@ -19,15 +23,19 @@ export const createPost = asyncHandler(async (req, res) => {
     content,
     category,
     tags,
-    image,
+    image: image || null, // allow optional image
     slug: slugify(title, { lower: true }),
-    author: req.user._id, 
+    author: req.user._id,
     status: "published",
   });
 
+  // Populate author immediately so frontend doesn’t show "unknown"
+  const populatedPost = await Post.findById(post._id)
+    .populate("author", "name username email profilePic");
+
   res.status(201).json({
     success: true,
-    post,
+    post: populatedPost,
   });
 });
 
@@ -44,6 +52,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 
   const filter = {
     status: "published",
+    isDeleted: { $ne: true },
     ...(search && {
       $or: [
         { title: { $regex: search, $options: "i" } },
@@ -78,19 +87,15 @@ export const getAllPosts = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const getPostById = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" } })
+  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isDeleted: { $ne: true } })
     .populate("author", "name email profilePic")
     .populate("comments.user", "name profilePic");
 
   if (!post) {
-    res.status(404);
-    throw new Error("Post not found or removed");
+    return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
-  res.json({
-    success: true,
-    post,
-  });
+  res.json({ success: true, post });
 });
 
 /**
@@ -101,25 +106,20 @@ export const getPostById = asyncHandler(async (req, res) => {
 export const getPostBySlug = asyncHandler(async (req, res) => {
   const post = await Post.findOne({
     slug: req.params.slug,
-    isDeleted: { $ne: true }, // ✅ prevent removed posts
-    // status: "published",   // ❌ optional – avoid breaking older posts
+    status: "published",
+    isDeleted: { $ne: true },
   })
     .populate("author", "name username email profilePic")
     .populate("comments.user", "name profilePic");
 
   if (!post) {
-    res.status(404);
-    throw new Error("Post not found or removed");
+    return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
-  // ✅ Safe views increment
   post.views = (post.views || 0) + 1;
   await post.save();
 
-  res.status(200).json({
-    success: true,
-    post,
-  });
+  res.status(200).json({ success: true, post });
 });
 
 /**
@@ -128,11 +128,10 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const toggleLikePost = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" } });
+  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isDeleted: { $ne: true } });
 
   if (!post) {
-    res.status(404);
-    throw new Error("Post not found or removed");
+    return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
   const userId = req.user._id.toString();
@@ -149,11 +148,7 @@ export const toggleLikePost = asyncHandler(async (req, res) => {
 
   await post.save();
 
-  res.json({
-    success: true,
-    liked,
-    likesCount: post.likes.length,
-  });
+  res.json({ success: true, liked, likesCount: post.likes.length });
 });
 
 /**
@@ -165,15 +160,13 @@ export const addComment = asyncHandler(async (req, res) => {
   const { text } = req.body;
 
   if (!text || !text.trim()) {
-    res.status(400);
-    throw new Error("Comment cannot be empty");
+    return res.status(400).json({ success: false, message: "Comment cannot be empty" });
   }
 
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" } });
+  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isDeleted: { $ne: true } });
 
   if (!post) {
-    res.status(404);
-    throw new Error("Post not found or removed");
+    return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
   post.comments.push({
@@ -188,10 +181,7 @@ export const addComment = asyncHandler(async (req, res) => {
     .populate("author", "name profilePic")
     .populate("comments.user", "name profilePic");
 
-  res.status(201).json({
-    success: true,
-    post: updatedPost,
-  });
+  res.status(201).json({ success: true, post: updatedPost });
 });
 
 /**
@@ -200,20 +190,19 @@ export const addComment = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const getPostAnalytics = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" } });
+  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isDeleted: { $ne: true } });
 
   if (!post) {
-    res.status(404);
-    throw new Error("Post not found or removed");
+    return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
   res.json({
     success: true,
     analytics: {
-      views: post.views,
-      likes: post.likes.length,
-      shares: post.shares,
-      comments: post.comments.length,
+      views: post.views || 0,
+      likes: post.likes?.length || 0,
+      shares: post.shares || 0,
+      comments: post.comments?.length || 0,
     },
   });
 });
@@ -221,15 +210,12 @@ export const getPostAnalytics = asyncHandler(async (req, res) => {
 /**
  * @desc    Get posts created by a specific user
  * @route   GET /api/users/:id/posts
- * @access  Public (or Private if restricted)
+ * @access  Public
  */
 export const getUserPosts = asyncHandler(async (req, res) => {
-  const posts = await Post.find({ author: req.params.id, status: { $ne: "removed" } })
+  const posts = await Post.find({ author: req.params.id, status: { $ne: "removed" }, isDeleted: { $ne: true } })
     .populate("author", "name username profilePic")
     .sort({ createdAt: -1 });
 
-  res.json({
-    success: true,
-    posts,
-  });
+  res.json({ success: true, posts });
 });

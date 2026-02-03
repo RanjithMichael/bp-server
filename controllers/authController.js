@@ -8,14 +8,17 @@ import generateToken from "../utils/generateToken.js";
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
-  // check if user already exists
+  if (!name || !email || !password) {
+    res.status(400);
+    throw new Error("All fields are required");
+  }
+
   const userExists = await User.findOne({ email: email.toLowerCase() });
   if (userExists) {
     res.status(400);
     throw new Error("User already exists");
   }
 
-  // create user (password hashing handled in User model pre-save hook)
   const user = await User.create({
     name,
     email: email.toLowerCase(),
@@ -26,12 +29,12 @@ const registerUser = asyncHandler(async (req, res) => {
     res.status(201).json({
       message: "User registered successfully",
       user: {
-        _id: user.id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         isAdmin: user.isAdmin,
       },
-      token: generateToken(user.id),
+      token: generateToken(user._id),
     });
   } else {
     res.status(400);
@@ -45,14 +48,13 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // find user with password included
   const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
 
   if (user && (await user.matchPassword(password))) {
     res.json({
       message: "Login successful",
       user: {
-        _id: user.id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         isAdmin: user.isAdmin,
@@ -65,10 +67,15 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Delete user (Admin)
+// @desc    Delete user (Admin only)
 // @route   DELETE /api/auth/:id
 // @access  Private/Admin
 const deleteUser = asyncHandler(async (req, res) => {
+  if (!req.user || !req.user.isAdmin) {
+    res.status(403);
+    throw new Error("Not authorized as admin");
+  }
+
   const user = await User.findById(req.params.id);
 
   if (user) {
