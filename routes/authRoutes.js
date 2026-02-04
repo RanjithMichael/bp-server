@@ -10,8 +10,8 @@ import { protect, admin } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
 // Public routes
-router.post("/register", registerUser);
-router.post("/login", loginUser);
+router.post("api/auth/register", registerUser);
+router.post("api/auth/login", loginUser);
 
 // Private routes
 router.get("/profile", protect, getUserProfile);

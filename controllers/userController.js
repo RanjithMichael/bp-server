@@ -2,10 +2,79 @@ import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
 import Post from "../models/Post.js";
 import Subscription from "../models/Subscription.js";
+import generateToken from "../utils/generateToken.js";
 
-// @desc    Get current logged-in user's posts
-// @route   GET /api/users/myposts
-// @access  Private
+/**
+ * @desc    Register a new user
+ * @route   POST /api/users/register
+ * @access  Public
+ */
+export const registerUser = asyncHandler(async (req, res) => {
+  const { name, username, email, password } = req.body;
+
+  // Check if user already exists
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    return res.status(400).json({ success: false, message: "User already exists" });
+  }
+
+  // Create new user
+  const user = await User.create({
+    name,
+    username,
+    email,
+    password, // hashed in User model pre-save hook
+  });
+
+  if (user) {
+    res.status(201).json({
+      success: true,
+      token: generateToken(user._id),
+      user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        profilePic: user.profilePic,
+      },
+    });
+  } else {
+    res.status(400).json({ success: false, message: "Invalid user data" });
+  }
+});
+
+/**
+ * @desc    Login user & get token
+ * @route   POST /api/users/login
+ * @access  Public
+ */
+export const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (user && (await user.matchPassword(password))) {
+    res.json({
+      success: true,
+      token: generateToken(user._id),
+      user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        profilePic: user.profilePic,
+      },
+    });
+  } else {
+    res.status(401).json({ success: false, message: "Invalid email or password" });
+  }
+});
+
+/**
+ * @desc    Get current logged-in user's posts
+ * @route   GET /api/users/myposts
+ * @access  Private
+ */
 export const getMyPosts = asyncHandler(async (req, res) => {
   const posts = await Post.find({
     author: req.user._id,
@@ -21,9 +90,11 @@ export const getMyPosts = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Update current user's profile
-// @route   PUT /api/users/profile
-// @access  Private
+/**
+ * @desc    Update current user's profile
+ * @route   PUT /api/users/profile
+ * @access  Private
+ */
 export const updateUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
@@ -32,20 +103,16 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  // Update basic info
   user.name = req.body.name || user.name;
   user.email = req.body.email || user.email;
 
-  // Password (optional) - handled by pre-save hook
   if (req.body.password) {
     user.password = req.body.password;
   }
 
-  // Bio and social links
   if (req.body.bio !== undefined) user.bio = req.body.bio;
   if (req.body.socialLinks !== undefined) user.socialLinks = req.body.socialLinks;
 
-  // Profile picture (Multer upload or fallback URL)
   if (req.file) {
     user.profilePic = `/uploads/${req.file.filename}`;
   } else if (req.body.profilePic !== undefined) {
@@ -67,9 +134,11 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get user by ID (admin dashboard)
-// @route   GET /api/users/:id
-// @access  Private/Admin
+/**
+ * @desc    Get user by ID (admin dashboard)
+ * @route   GET /api/users/:id
+ * @access  Private/Admin
+ */
 export const getUserById = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id).select("-password");
 
@@ -94,9 +163,11 @@ export const getUserById = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Public Author Page (visible without login)
-// @route   GET /api/users/author/:username
-// @access  Public
+/**
+ * @desc    Public Author Page (visible without login)
+ * @route   GET /api/users/author/:username
+ * @access  Public
+ */
 export const getAuthorPage = asyncHandler(async (req, res) => {
   const user = await User.findOne({ username: req.params.username }).select("-password");
 
@@ -126,9 +197,11 @@ export const getAuthorPage = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get all users (for admin)
-// @route   GET /api/users
-// @access  Private/Admin
+/**
+ * @desc    Get all users (for admin)
+ * @route   GET /api/users
+ * @access  Private/Admin
+ */
 export const getUsers = asyncHandler(async (req, res) => {
   const users = await User.find({}).select("-password");
 

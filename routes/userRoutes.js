@@ -8,6 +8,8 @@ import {
   getUserById,
   getUsers,
   getAuthorPage,
+  registerUser,
+  loginUser,
 } from "../controllers/userController.js";
 
 import { protect, admin } from "../middlewares/authMiddleware.js";
@@ -21,7 +23,6 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}${path.extname(file.originalname)}`),
 });
 
-// File filter: only allow images
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -41,22 +42,16 @@ const upload = multer({
 });
 
 // Public routes
-router.get("/author/:username", getAuthorPage); // GET /api/users/author/:username
+router.post("/register", registerUser); // POST /api/users/register
+router.post("/login", loginUser);       // POST /api/users/login
+router.get("/author/:username", getAuthorPage);
 
-// Protected routes (logged-in users)
+// Protected routes
 router.get("/myposts", protect, getMyPosts);
-
-router
-  .route("/profile")
-  .put(protect, upload.single("profilePic"), updateUserProfile);
+router.put("/profile", protect, upload.single("profilePic"), updateUserProfile);
 
 // Admin routes
-router.route("/")
-  .get(protect, admin, getUsers); // GET /api/users
-
-router.route("/:id")
-  .get(protect, admin, getUserById); // GET /api/users/:id
-  // .put(protect, admin, updateUserById)   // optional future endpoint
-  // .delete(protect, admin, deleteUserById) // optional future endpoint
+router.get("/", protect, admin, getUsers);
+router.get("/:id", protect, admin, getUserById);
 
 export default router;
