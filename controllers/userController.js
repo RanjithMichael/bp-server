@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import Post from "../models/Post.js";
 import Subscription from "../models/Subscription.js";
 import generateToken from "../utils/generateToken.js";
+import { sendEmail } from "../utils/sendEmail.js";   // ✅ Import Brevo email utility
 
 /**
  * @desc    Register a new user
@@ -18,15 +19,21 @@ export const registerUser = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: "User already exists" });
   }
 
-  // Create new user
-  const user = await User.create({
-    name,
-    username,
-    email,
-    password, // hashed in User model pre-save hook
-  });
+  // Create new user (password hashed in User model pre-save hook)
+  const user = await User.create({ name, username, email, password });
 
   if (user) {
+    // ✅ Send welcome email via Brevo
+    await sendEmail({
+      to: user.email,
+      subject: "Welcome to Blogging Platform 🎉",
+      htmlContent: `
+        <h2>Hello ${user.name},</h2>
+        <p>Thanks for registering on our Blogging Platform!</p>
+        <p>You can now log in and start creating posts.</p>
+      `,
+    });
+
     res.status(201).json({
       success: true,
       token: generateToken(user._id),
@@ -103,16 +110,20 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
+  // Update basic info
   user.name = req.body.name || user.name;
   user.email = req.body.email || user.email;
 
+  // Password (optional) - handled by pre-save hook
   if (req.body.password) {
     user.password = req.body.password;
   }
 
+  // Bio and social links
   if (req.body.bio !== undefined) user.bio = req.body.bio;
   if (req.body.socialLinks !== undefined) user.socialLinks = req.body.socialLinks;
 
+  // Profile picture (Multer upload or fallback URL)
   if (req.file) {
     user.profilePic = `/uploads/${req.file.filename}`;
   } else if (req.body.profilePic !== undefined) {
