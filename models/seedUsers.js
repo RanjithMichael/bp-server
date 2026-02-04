@@ -11,9 +11,11 @@ const seedUsers = async () => {
     await mongoose.connect(
       process.env.MONGO_URI || "mongodb://127.0.0.1:27017/blogging_platform"
     );
+    console.log("🔗 Connected to MongoDB");
 
-    // Optional: clear old users
+    // Optional: clear old users (⚠️ be careful in production!)
     await User.deleteMany({});
+    console.log("🧹 Cleared old users");
 
     // Create sample users
     const users = [
@@ -23,12 +25,13 @@ const seedUsers = async () => {
         email: "alice@example.com",
         password: bcrypt.hashSync("password123", 10),
         bio: "Full‑stack developer exploring MERN stack.",
-        social: {
+        socialLinks: {
           website: "https://alice.dev",
           twitter: "https://twitter.com/alice",
           linkedin: "https://linkedin.com/in/alice",
           github: "https://github.com/alice",
         },
+        role: "author",
       },
       {
         name: "Bob Designer",
@@ -36,24 +39,28 @@ const seedUsers = async () => {
         email: "bob@example.com",
         password: bcrypt.hashSync("password123", 10),
         bio: "UI/UX designer passionate about TailwindCSS.",
-        social: {
+        socialLinks: {
           website: "https://bob.design",
           twitter: "https://twitter.com/bob",
           linkedin: "https://linkedin.com/in/bob",
           github: "https://github.com/bob",
         },
+        role: "author",
       },
     ];
 
     const result = await User.insertMany(users);
-    result.forEach((u) => console.log(`✅ Added user: ${u.name} (${u.email})`));
+    result.forEach((u) =>
+      console.log(`✅ Added user: ${u.name} (${u.email})`)
+    );
 
-    await mongoose.disconnect();
     console.log("🌱 User seeding complete!");
   } catch (err) {
     console.error("❌ Error seeding users:", err);
-    await mongoose.disconnect();
     process.exit(1);
+  } finally {
+    await mongoose.disconnect();
+    console.log("🔌 MongoDB disconnected");
   }
 };
 

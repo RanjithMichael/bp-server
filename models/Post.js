@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import slugify from "slugify";
 
-// Comment Schema
+// Comment Schema (embedded for quick access)
 const commentSchema = new mongoose.Schema(
   {
     user: {
@@ -11,10 +11,10 @@ const commentSchema = new mongoose.Schema(
     },
     text: {
       type: String,
-      required: true,
+      required: [true, "Comment text is required"],
       trim: true,
+      maxlength: [500, "Comment cannot exceed 500 characters"],
     },
-    // Optional: link back to post if you want standalone comment queries
     post: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
@@ -30,58 +30,65 @@ const postSchema = new mongoose.Schema(
       type: String,
       required: [true, "Post title is required"],
       trim: true,
-      minlength: 3,
+      minlength: [3, "Title must be at least 3 characters"],
+      maxlength: [150, "Title cannot exceed 150 characters"],
     },
-
     slug: {
       type: String,
       unique: true,
       index: true,
     },
-
     content: {
       type: String,
       required: [true, "Post content is required"],
+      minlength: [20, "Content must be at least 20 characters"],
     },
-
+    coverImage: {
+      type: String,
+      default: "",
+    },
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-
     category: {
-      type: String,
-      default: "General",
-      trim: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      default: null,
     },
-
-    tags: {
-      type: [String],
-      default: [],
-    },
-
-    // ✅ Lifecycle status
+    tags: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Tag",
+      },
+    ],
     status: {
       type: String,
       enum: ["draft", "published", "removed"],
       default: "published",
       index: true,
     },
-
-    // Analytics
-    views: { type: Number, default: 0 },
-    shares: { type: Number, default: 0 },
-
-    // ✅ Likes stored as user references
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    views: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    shares: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
-
-    // ✅ Embedded comments
     comments: [commentSchema],
   },
   { timestamps: true }
@@ -130,9 +137,11 @@ postSchema.virtual("sharesCount").get(function () {
 postSchema.set("toJSON", { virtuals: true });
 postSchema.set("toObject", { virtuals: true });
 
-// Indexes for performance
+// Indexes for performance & search
 postSchema.index({ author: 1, status: 1 });
 postSchema.index({ slug: 1 });
+postSchema.index({ title: "text", content: "text", tags: "text" });
 
 const Post = mongoose.model("Post", postSchema);
+
 export default Post;

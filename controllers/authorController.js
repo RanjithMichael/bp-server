@@ -5,8 +5,15 @@ import User from "../models/User.js"; // Assuming authors are users
 // @route   GET /api/authors
 // @access  Public
 export const getAllAuthors = asyncHandler(async (req, res) => {
-  const authors = await User.find({ role: "author" }).select("-password");
-  res.json(authors);
+  const authors = await User.find({ role: "author" })
+    .select("-password")
+    .sort({ createdAt: -1 });
+
+  res.json({
+    success: true,
+    count: authors.length,
+    data: authors,
+  });
 });
 
 // @desc    Get author page by ID
@@ -20,7 +27,10 @@ export const getAuthorPage = asyncHandler(async (req, res) => {
     throw new Error("Author not found");
   }
 
-  res.json(author);
+  res.json({
+    success: true,
+    data: author,
+  });
 });
 
 // @desc    Update author
@@ -34,13 +44,22 @@ export const updateAuthor = asyncHandler(async (req, res) => {
     throw new Error("Author not found");
   }
 
-  // Only allow updates to name, email, bio, etc.
-  author.name = req.body.name || author.name;
-  author.email = req.body.email || author.email;
-  author.bio = req.body.bio || author.bio;
+  const { name, email, bio } = req.body;
+
+  if (!name && !email && !bio) {
+    return res.status(400).json({ message: "No valid fields provided for update" });
+  }
+
+  if (name) author.name = name;
+  if (email) author.email = email;
+  if (bio) author.bio = bio;
 
   const updatedAuthor = await author.save();
-  res.json(updatedAuthor);
+
+  res.json({
+    success: true,
+    data: updatedAuthor,
+  });
 });
 
 // @desc    Delete author
@@ -54,7 +73,10 @@ export const deleteAuthor = asyncHandler(async (req, res) => {
     throw new Error("Author not found");
   }
 
-  await author.remove();
-  res.json({ message: "Author removed" });
-});
+  await author.deleteOne();
 
+  res.json({
+    success: true,
+    message: "Author removed",
+  });
+});

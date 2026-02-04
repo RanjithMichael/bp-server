@@ -1,4 +1,3 @@
-// seedPosts.js
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import slugify from "slugify";
@@ -19,11 +18,10 @@ const seedPosts = async () => {
     const author = await User.findOne();
     if (!author) {
       console.log("⚠️ No users found. Please create a user first.");
-      await mongoose.disconnect();
       return;
     }
 
-    // Optional: clear old posts
+    // Optional: clear old posts (be careful in production!)
     await Post.deleteMany({});
     console.log("🧹 Cleared old posts");
 
@@ -61,12 +59,13 @@ const seedPosts = async () => {
       console.log(`✅ Added: ${p.title} (slug: ${p.slug})`)
     );
 
-    await mongoose.disconnect();
     console.log("🌱 Seeding complete!");
   } catch (err) {
     console.error("❌ Error seeding posts:", err);
-    await mongoose.disconnect();
     process.exit(1);
+  } finally {
+    await mongoose.disconnect();
+    console.log("🔌 MongoDB disconnected");
   }
 };
 

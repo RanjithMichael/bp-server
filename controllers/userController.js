@@ -16,7 +16,8 @@ export const getMyPosts = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    posts,
+    count: posts.length,
+    data: posts,
   });
 });
 
@@ -35,31 +36,34 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
   user.name = req.body.name || user.name;
   user.email = req.body.email || user.email;
 
-  // Password (optional)
+  // Password (optional) - handled by pre-save hook
   if (req.body.password) {
-    user.password = req.body.password; 
+    user.password = req.body.password;
   }
 
   // Bio and social links
   if (req.body.bio !== undefined) user.bio = req.body.bio;
   if (req.body.socialLinks !== undefined) user.socialLinks = req.body.socialLinks;
 
-  // Profile picture (Multer upload)
+  // Profile picture (Multer upload or fallback URL)
   if (req.file) {
     user.profilePic = `/uploads/${req.file.filename}`;
   } else if (req.body.profilePic !== undefined) {
-    user.profilePic = req.body.profilePic; // fallback URL
+    user.profilePic = req.body.profilePic;
   }
 
   const updatedUser = await user.save();
 
   res.json({
-    _id: updatedUser._id,
-    name: updatedUser.name,
-    email: updatedUser.email,
-    bio: updatedUser.bio,
-    profilePic: updatedUser.profilePic,
-    socialLinks: updatedUser.socialLinks,
+    success: true,
+    data: {
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      bio: updatedUser.bio,
+      profilePic: updatedUser.profilePic,
+      socialLinks: updatedUser.socialLinks,
+    },
   });
 });
 
@@ -74,13 +78,20 @@ export const getUserById = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  const posts = await Post.find({ author: user._id, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
-  const subscriptions = await Subscription.find({ user: user._id }).populate(
-    "author",
-    "name username email profilePic"
-  );
+  const posts = await Post.find({ author: user._id, isDeleted: { $ne: true } })
+    .sort({ createdAt: -1 });
 
-  res.json({ user, posts, subscriptions });
+  const subscriptions = await Subscription.find({ user: user._id })
+    .populate("author", "name username email profilePic");
+
+  res.json({
+    success: true,
+    data: {
+      user,
+      posts,
+      subscriptions,
+    },
+  });
 });
 
 // @desc    Public Author Page (visible without login)
@@ -120,5 +131,10 @@ export const getAuthorPage = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 export const getUsers = asyncHandler(async (req, res) => {
   const users = await User.find({}).select("-password");
-  res.json(users);
+
+  res.json({
+    success: true,
+    count: users.length,
+    data: users,
+  });
 });

@@ -5,7 +5,7 @@ const subscriptionSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: [true, "Subscription must belong to a user"],
     },
     author: {
       type: mongoose.Schema.Types.ObjectId,
@@ -16,6 +16,7 @@ const subscriptionSchema = new mongoose.Schema(
       type: String,
       default: null,
       trim: true,
+      lowercase: true, // normalize to avoid duplicates
     },
   },
   { timestamps: true }
@@ -36,11 +37,15 @@ subscriptionSchema.index(
 // Validation to ensure one of author or category is provided
 subscriptionSchema.pre("save", function (next) {
   if (!this.author && !this.category) {
-    return next(new Error("Subscription must have either an author or a category"));
+    return next(
+      new Error("Subscription must have either an author or a category")
+    );
   }
   next();
 });
 
-const Subscription = mongoose.model("Subscription", subscriptionSchema);
-export default Subscription;
+// Prevent model overwrite issues in dev/hot-reload
+const Subscription =
+  mongoose.models.Subscription || mongoose.model("Subscription", subscriptionSchema);
 
+export default Subscription;

@@ -25,14 +25,19 @@ export const protect = asyncHandler(async (req, res, next) => {
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Fetch user from DB (only required fields)
+    // Fetch user from DB (only safe fields)
     const user = await User.findById(decoded.id).select(
-      "_id name email isAdmin profilePic username"
+      "_id name email role profilePic bio socialLinks isActive"
     );
 
     if (!user) {
       res.status(401);
       throw new Error("Not authorized, user not found");
+    }
+
+    if (!user.isActive) {
+      res.status(403);
+      throw new Error("Account is deactivated. Contact admin.");
     }
 
     req.user = user; // attach user to request
@@ -55,10 +60,23 @@ export const protect = asyncHandler(async (req, res, next) => {
  * @access  Private/Admin
  */
 export const admin = (req, res, next) => {
-  if (req.user && req.user.isAdmin) {
+  if (req.user && req.user.role === "admin") {
     next();
   } else {
     res.status(403); // Forbidden
     throw new Error("Not authorized as admin");
+  }
+};
+
+/**
+ * @desc    Author middleware
+ * @access  Private/Author
+ */
+export const author = (req, res, next) => {
+  if (req.user && (req.user.role === "author" || req.user.role === "admin")) {
+    next();
+  } else {
+    res.status(403); // Forbidden
+    throw new Error("Not authorized as author");
   }
 };

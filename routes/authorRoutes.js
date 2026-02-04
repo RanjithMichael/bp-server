@@ -5,24 +5,20 @@ import {
   updateAuthor,
   deleteAuthor,
 } from "../controllers/authorController.js";
+import { protect, admin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Get all authors
-// GET /api/authors
-router.get("/", getAllAuthors);
+// Public routes
+router.route("/")
+  .get(getAllAuthors); // GET /api/authors
 
-// Get single author page
-// GET /api/authors/:id
-router.get("/:id", getAuthorPage);
+router.route("/:id")
+  .get(getAuthorPage); // GET /api/authors/:id
 
-// Update author
-// PUT /api/authors/:id
-router.put("/:id", updateAuthor);
-
-// Delete author
-// DELETE /api/authors/:id
-router.delete("/:id", deleteAuthor);
+// Protected routes (Admin or Author)
+router.route("/:id")
+  .put(protect, updateAuthor)     // PUT /api/authors/:id
+  .delete(protect, admin, deleteAuthor); // DELETE /api/authors/:id
 
 export default router;
-

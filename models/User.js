@@ -7,6 +7,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Name is required"],
       trim: true,
+      minlength: [2, "Name must be at least 2 characters"],
+      maxlength: [50, "Name cannot exceed 50 characters"],
     },
     email: {
       type: String,
@@ -14,6 +16,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Please enter a valid email address"],
     },
     password: {
       type: String,
@@ -24,6 +27,7 @@ const userSchema = new mongoose.Schema(
     bio: {
       type: String,
       trim: true,
+      maxlength: [200, "Bio cannot exceed 200 characters"],
       default: "",
     },
     profilePic: {
@@ -31,19 +35,22 @@ const userSchema = new mongoose.Schema(
       default: "", // can store /uploads/file.jpg or external URL
     },
     socialLinks: {
-      website: { type: String, default: "" },
-      twitter: { type: String, default: "" },
-      linkedin: { type: String, default: "" },
-      github: { type: String, default: "" },
+      website: { type: String, trim: true, default: "" },
+      twitter: { type: String, trim: true, default: "" },
+      linkedin: { type: String, trim: true, default: "" },
+      github: { type: String, trim: true, default: "" },
     },
-    isAdmin: {
+    role: {
+      type: String,
+      enum: ["user", "author", "admin"],
+      default: "user",
+    },
+    isActive: {
       type: Boolean,
-      default: false,
+      default: true,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 // Encrypt password before saving
@@ -57,16 +64,17 @@ userSchema.pre("save", async function (next) {
 
 // Compare entered password with stored hash
 userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  return bcrypt.compare(enteredPassword, this.password);
 };
 
-const User = mongoose.model("User", userSchema);
+// Hide sensitive fields when converting to JSON
+userSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
+};
+
+// Prevent model overwrite issues in dev/hot-reload
+const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 export default User;
-
-
-
-
-
- 
-

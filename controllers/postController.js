@@ -1,5 +1,4 @@
 import asyncHandler from "express-async-handler";
-import slugify from "slugify";
 import Post from "../models/Post.js";
 
 /**
@@ -8,7 +7,7 @@ import Post from "../models/Post.js";
  * @access  Private
  */
 export const createPost = asyncHandler(async (req, res) => {
-  const { title, content, category, tags, image } = req.body;
+  const { title, content, category, tags, coverImage } = req.body;
 
   if (!title || !content) {
     return res.status(400).json({ success: false, message: "Title and content are required" });
@@ -23,20 +22,15 @@ export const createPost = asyncHandler(async (req, res) => {
     content,
     category,
     tags,
-    image: image || null, // allow optional image
-    slug: slugify(title, { lower: true }),
+    coverImage: coverImage || "",
     author: req.user._id,
     status: "published",
   });
 
-  // Populate author immediately so frontend doesn’t show "unknown"
   const populatedPost = await Post.findById(post._id)
-    .populate("author", "name username email profilePic");
+    .populate("author", "name email profilePic");
 
-  res.status(201).json({
-    success: true,
-    post: populatedPost,
-  });
+  res.status(201).json({ success: true, post: populatedPost });
 });
 
 /**
@@ -52,13 +46,11 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 
   const filter = {
     status: "published",
-    isDeleted: { $ne: true },
+    isActive: true,
     ...(search && {
       $or: [
         { title: { $regex: search, $options: "i" } },
         { content: { $regex: search, $options: "i" } },
-        { category: { $regex: search, $options: "i" } },
-        { tags: { $in: [new RegExp(search, "i")] } },
       ],
     }),
   };
@@ -82,12 +74,12 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get single post by ID (NO view increment)
+ * @desc    Get single post by ID
  * @route   GET /api/posts/:id
  * @access  Public
  */
 export const getPostById = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isDeleted: { $ne: true } })
+  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isActive: true })
     .populate("author", "name email profilePic")
     .populate("comments.user", "name profilePic");
 
@@ -104,12 +96,8 @@ export const getPostById = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const getPostBySlug = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({
-    slug: req.params.slug,
-    status: "published",
-    isDeleted: { $ne: true },
-  })
-    .populate("author", "name username email profilePic")
+  const post = await Post.findOne({ slug: req.params.slug, status: "published", isActive: true })
+    .populate("author", "name email profilePic")
     .populate("comments.user", "name profilePic");
 
   if (!post) {
@@ -128,7 +116,7 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const toggleLikePost = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isDeleted: { $ne: true } });
+  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isActive: true });
 
   if (!post) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
@@ -163,7 +151,7 @@ export const addComment = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: "Comment cannot be empty" });
   }
 
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isDeleted: { $ne: true } });
+  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isActive: true });
 
   if (!post) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
@@ -190,7 +178,7 @@ export const addComment = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const getPostAnalytics = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isDeleted: { $ne: true } });
+  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isActive: true });
 
   if (!post) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
@@ -213,9 +201,65 @@ export const getPostAnalytics = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const getUserPosts = asyncHandler(async (req, res) => {
-  const posts = await Post.find({ author: req.params.id, status: { $ne: "removed" }, isDeleted: { $ne: true } })
-    .populate("author", "name username profilePic")
+  const posts = await Post.find({ author: req.params.id, status: { $ne: "removed" }, isActive: true })
+    .populate("author", "name profilePic")
     .sort({ createdAt: -1 });
 
   res.json({ success: true, posts });
+});
+
+/**
+ * @desc    Update a post
+ * @route   PUT /api/posts/:id
+ * @access  Private/Author
+ */
+export const updatePost = asyncHandler(async (req, res) => {
+  const { title, content, category, tags, coverImage, status } = req.body;
+
+  const post = await Post.findById(req.params.id);
+
+  if (!post || !post.isActive) {
+    return res.status(404).json({ success: false, message: "Post not found or removed" });
+  }
+
+  if (post.author.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+    return res.status(403).json({ success: false, message: "Not authorized to update this post" });
+  }
+
+  post.title = title || post.title;
+  post.content = content || post.content;
+  post.category = category || post.category;
+  post.tags = tags || post.tags;
+  post.coverImage = coverImage || post.coverImage;
+  post.status = status || post.status;
+
+  await post.save();
+
+  const updatedPost = await Post.findById(post._id)
+    .populate("author", "name profilePic");
+
+  res.json({ success: true, post: updatedPost });
+});
+
+/**
+ * @desc    Delete a post (soft delete)
+ * @route   DELETE /api/posts/:id
+ * @access  Private/Author/Admin
+ */
+export const deletePost = asyncHandler(async (req, res) => {
+  const post = await Post.findById(req.params.id);
+
+  if (!post || !post.isActive) {
+    return res.status(404).json({ success: false, message: "Post not found or already removed" });
+  }
+
+  if (post.author.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+    return res.status(403).json({ success: false, message: "Not authorized to delete this post" });
+  }
+
+  post.isActive = false;
+  post.status = "removed";
+  await post.save();
+
+  res.json({ success: true, message: "Post removed successfully" });
 });

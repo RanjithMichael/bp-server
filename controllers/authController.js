@@ -27,12 +27,14 @@ const registerUser = asyncHandler(async (req, res) => {
 
   if (user) {
     res.status(201).json({
+      success: true,
       message: "User registered successfully",
       user: {
         _id: user._id,
         name: user.name,
         email: user.email,
-        isAdmin: user.isAdmin,
+        role: user.role,
+        isActive: user.isActive,
       },
       token: generateToken(user._id),
     });
@@ -51,13 +53,20 @@ const loginUser = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
 
   if (user && (await user.matchPassword(password))) {
+    if (!user.isActive) {
+      res.status(403);
+      throw new Error("Account is deactivated. Contact admin.");
+    }
+
     res.json({
+      success: true,
       message: "Login successful",
       user: {
         _id: user._id,
         name: user.name,
         email: user.email,
-        isAdmin: user.isAdmin,
+        role: user.role,
+        isActive: user.isActive,
       },
       token: generateToken(user._id),
     });
@@ -67,11 +76,37 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get user profile
+// @route   GET /api/auth/profile
+// @access  Private
+const getUserProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+
+  if (user) {
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        bio: user.bio,
+        profilePic: user.profilePic,
+        socialLinks: user.socialLinks,
+        isActive: user.isActive,
+      },
+    });
+  } else {
+    res.status(404);
+    throw new Error("User not found");
+  }
+});
+
 // @desc    Delete user (Admin only)
 // @route   DELETE /api/auth/:id
 // @access  Private/Admin
 const deleteUser = asyncHandler(async (req, res) => {
-  if (!req.user || !req.user.isAdmin) {
+  if (!req.user || req.user.role !== "admin") {
     res.status(403);
     throw new Error("Not authorized as admin");
   }
@@ -79,12 +114,15 @@ const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
 
   if (user) {
-    await user.deleteOne();
-    res.json({ message: "User removed successfully" });
+    // Soft delete instead of hard delete
+    user.isActive = false;
+    await user.save();
+
+    res.json({ success: true, message: "User deactivated successfully" });
   } else {
     res.status(404);
     throw new Error("User not found");
   }
 });
 
-export { registerUser, loginUser, deleteUser };
+export {registerUser, loginUser, getUserProfile, deleteUser};

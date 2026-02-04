@@ -3,16 +3,18 @@ import path from "path";
 import fs from "fs";
 
 // Ensure uploads directory exists
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads");
+const uploadDir = path.resolve("uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
 }
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
-    cb(null, "uploads/");
+    cb(null, uploadDir);
   },
   filename(req, file, cb) {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    // Use timestamp + extension only (avoids unsafe chars in originalname)
+    cb(null, `${Date.now()}${path.extname(file.originalname).toLowerCase()}`);
   },
 });
 

@@ -4,9 +4,10 @@ const commentSchema = new mongoose.Schema(
   {
     text: {
       type: String,
-      required: true,
-      trim: true, // ✅ ensures no accidental whitespace
-      minlength: 1,
+      required: [true, "Comment text is required"],
+      trim: true,
+      minlength: [1, "Comment cannot be empty"],
+      maxlength: [500, "Comment cannot exceed 500 characters"], // optional safeguard
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -17,17 +18,22 @@ const commentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
       required: true,
+      index: true, // faster queries by post
     },
-    // ✅ Optional context field (e.g., reply, feedback type)
     context: {
       type: String,
       trim: true,
+      lowercase: true,
       default: null,
     },
-    // ✅ Soft delete flag for moderation
     isDeleted: {
       type: Boolean,
       default: false,
+    },
+    moderatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null, // optional: track admin/moderator who flagged/deleted
     },
   },
   { timestamps: true }
@@ -42,8 +48,8 @@ commentSchema.virtual("isActive").get(function () {
 commentSchema.set("toJSON", { virtuals: true });
 commentSchema.set("toObject", { virtuals: true });
 
-const Comment = mongoose.model("Comment", commentSchema);
+// Prevent model overwrite issues in dev/hot-reload
+const Comment =
+  mongoose.models.Comment || mongoose.model("Comment", commentSchema);
+
 export default Comment;
-
-
-
