@@ -23,10 +23,10 @@ const validate = (validations) => async (req, res, next) => {
   await Promise.all(validations.map((v) => v.run(req)));
   const errors = validationResult(req);
   if (errors.isEmpty()) return next();
-  res.status(400).json({ success: false, errors: errors.array() });
+  return res.status(400).json({ success: false, errors: errors.array() });
 };
 
-// PUBLIC ROUTES 
+//  PUBLIC ROUTES 
 
 // Get all posts (supports ?search=keyword)
 router.get("/", getAllPosts);
@@ -34,18 +34,19 @@ router.get("/", getAllPosts);
 // Get post by slug
 router.get("/slug/:slug", getPostBySlug);
 
-// Get post by ID
-router.get("/:id", getPostById);
-
 // Get posts by user
 router.get("/user/:id", getUserPosts);
 
+// Get post by ID
+router.get("/:id", getPostById);
+
 // PRIVATE ROUTES 
-// Create new post
+
+// Create new post (authors/admins only)
 router.post(
   "/",
   protect,
-  author, // only authors/admins can create
+  author,
   validate([
     body("title")
       .isLength({ min: 3 })
@@ -55,11 +56,11 @@ router.post(
   createPost
 );
 
-// Update post
+// Update post (authors/admins only)
 router.put(
   "/:id",
   protect,
-  author, // only authors/admins can update
+  author,
   validate([
     body("title")
       .optional()
@@ -73,11 +74,11 @@ router.put(
   updatePost
 );
 
-// Delete post (soft delete)
+// Delete post (soft delete, authors/admins only)
 router.delete("/:id", protect, author, deletePost);
 
 // Like / Unlike post
-router.patch("/:id/like", protect, toggleLikePost);
+router.post("/:id/like", protect, toggleLikePost);
 
 // Add comment
 router.post(

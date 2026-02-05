@@ -21,14 +21,18 @@ export const createPost = asyncHandler(async (req, res) => {
     title,
     content,
     category,
-    tags,
+    tags: tags || [],
     coverImage: coverImage || "",
     author: req.user._id,
     status: "published",
+    isActive: true,
+    likes: [],
+    comments: [],
+    views: 0,
+    shares: 0,
   });
 
-  const populatedPost = await Post.findById(post._id)
-    .populate("author", "name email profilePic");
+  const populatedPost = await Post.findById(post._id).populate("author", "name email profilePic");
 
   res.status(201).json({ success: true, post: populatedPost });
 });
@@ -112,7 +116,7 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
 
 /**
  * @desc    Like / Unlike a post
- * @route   PATCH /api/posts/:id/like
+ * @route   POST /api/posts/:id/like
  * @access  Private
  */
 export const toggleLikePost = asyncHandler(async (req, res) => {
@@ -128,9 +132,9 @@ export const toggleLikePost = asyncHandler(async (req, res) => {
   let liked = false;
 
   if (index >= 0) {
-    post.likes.splice(index, 1);
+    post.likes.splice(index, 1); // unlike
   } else {
-    post.likes.push(req.user._id);
+    post.likes.push(req.user._id); // like
     liked = true;
   }
 
@@ -160,7 +164,7 @@ export const addComment = asyncHandler(async (req, res) => {
   post.comments.push({
     user: req.user._id,
     text: text.trim(),
-    post: post._id,
+    createdAt: new Date(),
   });
 
   await post.save();
@@ -197,7 +201,7 @@ export const getPostAnalytics = asyncHandler(async (req, res) => {
 
 /**
  * @desc    Get posts created by a specific user
- * @route   GET /api/users/:id/posts
+ * @route   GET /api/posts/user/:id
  * @access  Public
  */
 export const getUserPosts = asyncHandler(async (req, res) => {
@@ -235,8 +239,7 @@ export const updatePost = asyncHandler(async (req, res) => {
 
   await post.save();
 
-  const updatedPost = await Post.findById(post._id)
-    .populate("author", "name profilePic");
+  const updatedPost = await Post.findById(post._id).populate("author", "name profilePic");
 
   res.json({ success: true, post: updatedPost });
 });
@@ -250,13 +253,22 @@ export const deletePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
   if (!post || !post.isActive) {
-    return res.status(404).json({ success: false, message: "Post not found or already removed" });
+    return res
+      .status(404)
+      .json({ success: false, message: "Post not found or already removed" });
   }
 
-  if (post.author.toString() !== req.user._id.toString() && req.user.role !== "admin") {
-    return res.status(403).json({ success: false, message: "Not authorized to delete this post" });
+  // Only author or admin can delete
+  if (
+    post.author.toString() !== req.user._id.toString() &&
+    req.user.role !== "admin"
+  ) {
+    return res
+      .status(403)
+      .json({ success: false, message: "Not authorized to delete this post" });
   }
 
+  // Soft delete
   post.isActive = false;
   post.status = "removed";
   await post.save();

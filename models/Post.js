@@ -19,6 +19,10 @@ const commentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
@@ -53,16 +57,13 @@ const postSchema = new mongoose.Schema(
       required: true,
     },
     category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
+      type: String, // ✅ simplified to plain string for demo
       default: null,
     },
-    tags: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Tag",
-      },
-    ],
+    tags: {
+      type: [String], // ✅ tags are now plain strings
+      default: [],
+    },
     status: {
       type: String,
       enum: ["draft", "published", "removed"],
