@@ -44,7 +44,7 @@ const seedPosts = async () => {
             <li>Node.js for runtime</li>
           </ul>
         `,
-        image: "uploads/images/sample1.jfif", // ✅ Tech image
+        image: "uploads/images/sample1.jfif", 
         author: author._id,
         status: "published",
         isActive: true,
@@ -66,7 +66,7 @@ const seedPosts = async () => {
           <p>TailwindCSS lets you build modern UIs quickly.</p>
           <p>It’s responsive, customizable, and developer-friendly.</p>
         `,
-        image: "uploads/images/sample2.jfif", // ✅ CSS/UI image
+        image: "uploads/images/sample2.jfif", 
         author: author._id,
         status: "published",
         isActive: true,
@@ -86,7 +86,7 @@ const seedPosts = async () => {
             <li>Use logging for queries</li>
           </ul>
         `,
-        image: "uploads/images/sample3.jfif", // ✅ Debugging image
+        image: "uploads/images/sample3.jfif", 
         author: author._id,
         status: "published",
         isActive: true,
@@ -101,7 +101,7 @@ const seedPosts = async () => {
           <p>Wake up early, hydrate, and exercise.</p>
           <p>Consistency builds discipline and energy.</p>
         `,
-        image: "uploads/images/sample4.jfif", // ✅ Lifestyle image
+        image: "uploads/images/sample4.jfif", 
         author: author._id,
         status: "published",
         isActive: true,
@@ -115,7 +115,7 @@ const seedPosts = async () => {
           <h2>Highlights</h2>
           <p>AI breakthroughs, new frameworks, and global tech trends.</p>
         `,
-        image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d", // ✅ News/AI image
+        image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d", 
         author: author._id,
         status: "published",
         isActive: true,

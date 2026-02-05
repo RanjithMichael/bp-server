@@ -9,7 +9,7 @@ const seedUsers = async () => {
   try {
     // Connect to DB
     await mongoose.connect(
-      process.env.MONGO_URI || "MONGO_URI=mongodb+srv://backiarajranjithmichael:Ranjith_2025@cluster0.glqkwsu.mongodb.net/blogging-platform?retryWrites=true&w=majority"
+      process.env.MONGO_URI
     );
     console.log("🔗 Connected to MongoDB");
 
