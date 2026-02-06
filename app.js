@@ -67,7 +67,7 @@ app.use("/api/posts", postRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/comments", commentRoutes);
-app.use("/api/upload", uploadRoutes);
+app.use("/upload", uploadRoutes);
 
 // Root
 app.get("/", (req, res) => {
