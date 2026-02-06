@@ -60,13 +60,13 @@ app.use(
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // API Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/authors", authorRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/posts", postRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/tags", tagRoutes);
-app.use("/api/comments", commentRoutes);
+app.use("/auth", authRoutes);
+app.use("/authors", authorRoutes);
+app.use("/users", userRoutes);
+app.use("/posts", postRoutes);
+app.use("/categories", categoryRoutes);
+app.use("/tags", tagRoutes);
+app.use("/comments", commentRoutes);
 app.use("/upload", uploadRoutes);
 
 // Root

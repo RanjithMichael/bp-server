@@ -3,7 +3,7 @@ import User from "../models/User.js";
 import Post from "../models/Post.js";
 import Subscription from "../models/Subscription.js";
 import generateToken from "../utils/generateToken.js";
-import { sendEmail } from "../utils/sendEmail.js";   // ✅ Import Brevo email utility
+import { sendEmail } from "../utils/sendEmail.js";   // ✅ Brevo email utility
 
 /**
  * @desc    Register a new user
@@ -13,26 +13,28 @@ import { sendEmail } from "../utils/sendEmail.js";   // ✅ Import Brevo email u
 export const registerUser = asyncHandler(async (req, res) => {
   const { name, username, email, password } = req.body;
 
-  // Check if user already exists
   const userExists = await User.findOne({ email });
   if (userExists) {
     return res.status(400).json({ success: false, message: "User already exists" });
   }
 
-  // Create new user (password hashed in User model pre-save hook)
   const user = await User.create({ name, username, email, password });
 
   if (user) {
-    // ✅ Send welcome email via Brevo
-    await sendEmail({
-      to: user.email,
-      subject: "Welcome to Blogging Platform 🎉",
-      htmlContent: `
-        <h2>Hello ${user.name},</h2>
-        <p>Thanks for registering on our Blogging Platform!</p>
-        <p>You can now log in and start creating posts.</p>
-      `,
-    });
+    // ✅ Send welcome email (non-blocking)
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Welcome to Blogging Platform 🎉",
+        htmlContent: `
+          <h2>Hello ${user.name},</h2>
+          <p>Thanks for registering on our Blogging Platform!</p>
+          <p>You can now log in and start creating posts.</p>
+        `,
+      });
+    } catch (err) {
+      console.error("Email error:", err.message);
+    }
 
     res.status(201).json({
       success: true,
@@ -58,7 +60,8 @@ export const registerUser = asyncHandler(async (req, res) => {
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
+  // ✅ explicitly select password
+  const user = await User.findOne({ email }).select("+password");
 
   if (user && (await user.matchPassword(password))) {
     res.json({
@@ -78,6 +81,33 @@ export const loginUser = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Get current logged-in user's profile
+ * @route   GET /api/users/profile
+ * @access  Private
+ */
+export const getUserProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select("-password");
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found" });
+  }
+
+  res.json({
+    success: true,
+    user: {
+      _id: user._id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      bio: user.bio,
+      profilePic: user.profilePic,
+      socialLinks: user.socialLinks,
+      subscriptions: user.subscriptions,
+    },
+  });
+});
+
+/**
  * @desc    Get current logged-in user's posts
  * @route   GET /api/users/myposts
  * @access  Private
@@ -93,7 +123,7 @@ export const getMyPosts = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     count: posts.length,
-    data: posts,
+    posts,  
   });
 });
 
@@ -106,24 +136,17 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (!user) {
-    res.status(404);
-    throw new Error("User not found");
+    return res.status(404).json({ success: false, message: "User not found" });
   }
 
-  // Update basic info
+  // Update fields
   user.name = req.body.name || user.name;
   user.email = req.body.email || user.email;
-
-  // Password (optional) - handled by pre-save hook
-  if (req.body.password) {
-    user.password = req.body.password;
-  }
-
-  // Bio and social links
+  if (req.body.password) user.password = req.body.password;
   if (req.body.bio !== undefined) user.bio = req.body.bio;
   if (req.body.socialLinks !== undefined) user.socialLinks = req.body.socialLinks;
 
-  // Profile picture (Multer upload or fallback URL)
+  // Profile picture
   if (req.file) {
     user.profilePic = `/uploads/${req.file.filename}`;
   } else if (req.body.profilePic !== undefined) {
@@ -134,7 +157,7 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    data: {
+    user: {
       _id: updatedUser._id,
       name: updatedUser.name,
       email: updatedUser.email,
@@ -154,8 +177,7 @@ export const getUserById = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id).select("-password");
 
   if (!user) {
-    res.status(404);
-    throw new Error("User not found");
+    return res.status(404).json({ success: false, message: "User not found" });
   }
 
   const posts = await Post.find({ author: user._id, isDeleted: { $ne: true } })
@@ -166,11 +188,9 @@ export const getUserById = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    data: {
-      user,
-      posts,
-      subscriptions,
-    },
+    user,
+    posts,
+    subscriptions,
   });
 });
 
@@ -183,8 +203,7 @@ export const getAuthorPage = asyncHandler(async (req, res) => {
   const user = await User.findOne({ username: req.params.username }).select("-password");
 
   if (!user) {
-    res.status(404);
-    throw new Error("Author not found");
+    return res.status(404).json({ success: false, message: "Author not found" });
   }
 
   const posts = await Post.find({
@@ -219,6 +238,6 @@ export const getUsers = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     count: users.length,
-    data: users,
+    users, 
   });
 });

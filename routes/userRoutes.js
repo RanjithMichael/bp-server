@@ -10,6 +10,7 @@ import {
   getAuthorPage,
   registerUser,
   loginUser,
+  getUserProfile,   
 } from "../controllers/userController.js";
 
 import { protect, admin } from "../middlewares/authMiddleware.js";
@@ -41,12 +42,15 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
 });
 
+// ROUTES 
+
 // Public routes
 router.post("/register", registerUser); // POST /api/users/register
 router.post("/login", loginUser);       // POST /api/users/login
 router.get("/author/:username", getAuthorPage);
 
 // Protected routes
+router.get("/profile", protect, getUserProfile); 
 router.get("/myposts", protect, getMyPosts);
 router.put("/profile", protect, upload.single("profilePic"), updateUserProfile);
 
