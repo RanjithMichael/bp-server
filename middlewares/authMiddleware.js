@@ -17,8 +17,7 @@ export const protect = asyncHandler(async (req, res, next) => {
   }
 
   if (!token) {
-    res.status(401);
-    throw new Error("Not authorized, no token provided");
+    return res.status(401).json({ message: "Not authorized, no token provided" });
   }
 
   try {
@@ -31,13 +30,11 @@ export const protect = asyncHandler(async (req, res, next) => {
     );
 
     if (!user) {
-      res.status(401);
-      throw new Error("Not authorized, user not found");
+      return res.status(401).json({ message: "Not authorized, user not found" });
     }
 
     if (!user.isActive) {
-      res.status(403);
-      throw new Error("Account is deactivated. Contact admin.");
+      return res.status(403).json({ message: "Account is deactivated. Contact admin." });
     }
 
     req.user = user; // attach user to request
@@ -46,12 +43,10 @@ export const protect = asyncHandler(async (req, res, next) => {
     console.error("JWT verification failed:", error.message);
 
     if (error.name === "TokenExpiredError") {
-      res.status(401);
-      throw new Error("Token expired, please log in again");
-    } else {
-      res.status(401);
-      throw new Error("Not authorized, token invalid");
+      return res.status(401).json({ message: "Token expired, please log in again" });
     }
+
+    return res.status(401).json({ message: "Not authorized, token invalid" });
   }
 });
 
@@ -63,8 +58,7 @@ export const admin = (req, res, next) => {
   if (req.user && req.user.role === "admin") {
     next();
   } else {
-    res.status(403); // Forbidden
-    throw new Error("Not authorized as admin");
+    return res.status(403).json({ message: "Not authorized as admin" });
   }
 };
 
@@ -76,7 +70,6 @@ export const author = (req, res, next) => {
   if (req.user && (req.user.role === "author" || req.user.role === "admin")) {
     next();
   } else {
-    res.status(403);
-    throw new Error("Not authorized as author");
+    return res.status(403).json({ message: "Not authorized as author" });
   }
 };
