@@ -14,19 +14,26 @@ import {
   deletePost,
 } from "../controllers/postController.js";
 
-import { protect, author, admin } from "../middlewares/authMiddleware.js";
+import { protect, author } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
 // Helper: validation middleware
+
 const validate = (validations) => async (req, res, next) => {
   await Promise.all(validations.map((v) => v.run(req)));
   const errors = validationResult(req);
+
   if (errors.isEmpty()) return next();
-  return res.status(400).json({ success: false, errors: errors.array() });
+
+  return res.status(400).json({
+    success: false,
+    errors: errors.array(),
+  });
 };
 
-//  PUBLIC ROUTES 
+
+// PUBLIC ROUTES
 
 // Get all posts (supports ?search=keyword)
 router.get("/", getAllPosts);
@@ -37,10 +44,14 @@ router.get("/slug/:slug", getPostBySlug);
 // Get posts by user
 router.get("/user/:id", getUserPosts);
 
+// ✅ IMPORTANT: analytics BEFORE :id route
+router.get("/:id/analytics", getPostAnalytics);
+
 // Get post by ID
 router.get("/:id", getPostById);
 
-// PRIVATE ROUTES 
+
+// PRIVATE ROUTES
 
 // Create new post (authors/admins only)
 router.post(
@@ -74,7 +85,7 @@ router.put(
   updatePost
 );
 
-// Delete post (soft delete, authors/admins only)
+// Delete post (soft delete)
 router.delete("/:id", protect, author, deletePost);
 
 // Like / Unlike post
@@ -84,11 +95,12 @@ router.post("/:id/like", protect, toggleLikePost);
 router.post(
   "/:id/comments",
   protect,
-  validate([body("text").notEmpty().withMessage("Comment cannot be empty")]),
+  validate([
+    body("text")
+      .notEmpty()
+      .withMessage("Comment cannot be empty"),
+  ]),
   addComment
 );
-
-// Get post analytics
-router.get("/:id/analytics", protect, getPostAnalytics);
 
 export default router;

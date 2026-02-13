@@ -10,20 +10,20 @@ const createSubscription = asyncHandler(async (req, res) => {
   const { authorId, category } = req.body;
 
   if (!authorId && !category) {
-    return res.status(400).json({ message: "You must provide either an author or a category" });
+    return res.status(400).json({ success: false, message: "You must provide either an author or a category" });
   }
 
   const normalizedCategory = category ? category.trim().toLowerCase() : null;
 
-  // Prevent duplicate subscriptions
+  // Prevent duplicate subscriptions (case-insensitive for category)
   const existing = await Subscription.findOne({
     user: req.user._id,
     ...(authorId && { author: authorId }),
-    ...(normalizedCategory && { category: normalizedCategory }),
-  });
+    ...(normalizedCategory && { category: { $regex: `^${normalizedCategory}$`, $options: "i" } }),
+  }).lean();
 
   if (existing) {
-    return res.status(400).json({ message: "Already subscribed" });
+    return res.status(400).json({ success: false, message: "Already subscribed" });
   }
 
   const subscription = new Subscription({
@@ -33,9 +33,16 @@ const createSubscription = asyncHandler(async (req, res) => {
   });
 
   await subscription.save();
+
   res.status(201).json({
     success: true,
-    data: subscription,
+    message: "Subscribed successfully",
+    data: {
+      id: subscription._id,
+      user: subscription.user,
+      author: subscription.author,
+      category: subscription.category,
+    },
   });
 });
 
@@ -46,12 +53,18 @@ const createSubscription = asyncHandler(async (req, res) => {
  */
 const getMySubscriptions = asyncHandler(async (req, res) => {
   const subs = await Subscription.find({ user: req.user._id })
-    .populate("author", "name email");
+    .populate("author", "name email")
+    .lean();
 
   res.json({
     success: true,
     count: subs.length,
-    data: subs,
+    data: subs.map(sub => ({
+      id: sub._id,
+      user: sub.user,
+      author: sub.author || null,
+      category: sub.category || null,
+    })),
   });
 });
 
@@ -64,19 +77,19 @@ const deleteSubscription = asyncHandler(async (req, res) => {
   const sub = await Subscription.findById(req.params.id);
 
   if (!sub) {
-    res.status(404);
-    throw new Error("Subscription not found");
+    return res.status(404).json({ success: false, message: "Subscription not found" });
   }
 
   if (sub.user.toString() !== req.user._id.toString()) {
-    res.status(401);
-    throw new Error("Not authorized");
+    return res.status(401).json({ success: false, message: "Not authorized" });
   }
 
   await sub.deleteOne();
+
   res.json({
     success: true,
     message: "Unsubscribed successfully",
+    data: { id: sub._id, user: sub.user, author: sub.author, category: sub.category },
   });
 });
 
@@ -91,11 +104,12 @@ const getSubscriptionStatus = asyncHandler(async (req, res) => {
   const existing = await Subscription.findOne({
     user: req.user._id,
     author: authorId,
-  });
+  }).lean();
 
   res.json({
     success: true,
     subscribed: !!existing,
+    subscriptionId: existing?._id || null,
   });
 });
 
@@ -110,10 +124,10 @@ const subscribeAuthor = asyncHandler(async (req, res) => {
   const existing = await Subscription.findOne({
     user: req.user._id,
     author: authorId,
-  });
+  }).lean();
 
   if (existing) {
-    return res.status(400).json({ message: "Already subscribed" });
+    return res.status(400).json({ success: false, message: "Already subscribed" });
   }
 
   const subscription = new Subscription({
@@ -122,10 +136,16 @@ const subscribeAuthor = asyncHandler(async (req, res) => {
   });
 
   await subscription.save();
+
   res.status(201).json({
     success: true,
     message: "Subscribed successfully",
-    data: subscription,
+    data: {
+      id: subscription._id,
+      user: subscription.user,
+      author: subscription.author,
+      category: subscription.category,
+    },
   });
 });
 
@@ -143,14 +163,15 @@ const unsubscribeAuthor = asyncHandler(async (req, res) => {
   });
 
   if (!sub) {
-    res.status(404);
-    throw new Error("Subscription not found");
+    return res.status(404).json({ success: false, message: "Subscription not found" });
   }
 
   await sub.deleteOne();
+
   res.json({
     success: true,
     message: "Unsubscribed successfully",
+    data: { id: sub._id, user: sub.user, author: sub.author },
   });
 });
 

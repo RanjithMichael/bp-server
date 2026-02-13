@@ -11,19 +11,22 @@ import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// General subscription routes (author or category via body)
+// General subscriptions (author or category via body)
+
 router.route("/")
   .post(protect, createSubscription)   // POST /api/subscriptions
   .get(protect, getMySubscriptions);   // GET /api/subscriptions
 
-// Delete by subscription ID (legacy method)
-router.route("/:id").delete(protect, deleteSubscription);
+// Delete by subscription ID (legacy / specific subscription)
+router.route("/id/:id").delete(protect, deleteSubscription); // DELETE /api/subscriptions/id/:id
 
-// Author-specific routes
-router.route("/:authorId")
-  .post(protect, subscribeAuthor)      // POST /api/subscriptions/:authorId
-  .delete(protect, unsubscribeAuthor); // DELETE /api/subscriptions/:authorId
+// Author-specific subscriptions (via URL param)
 
+router.route("/author/:authorId")
+  .post(protect, subscribeAuthor)      // POST /api/subscriptions/author/:authorId
+  .delete(protect, unsubscribeAuthor); // DELETE /api/subscriptions/author/:authorId
+
+// Check subscription status for a specific author
 router.get("/status/:authorId", protect, getSubscriptionStatus); // GET /api/subscriptions/status/:authorId
 
 export default router;
