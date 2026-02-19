@@ -19,6 +19,9 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import tagRoutes from "./routes/tagRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import subscriptionRoutes from "./routes/subscriptionRoutes.js";
+
+
 
 // Load env and connect DB
 dotenv.config();
@@ -68,6 +71,8 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
+
 
 // Root
 app.get("/", (req, res) => {

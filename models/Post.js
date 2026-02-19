@@ -56,12 +56,12 @@ const postSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    category: {
-      type: String, // ✅ simplified to plain string for demo
-      default: null,
+    categories: {
+      type: [String], // ✅ now an array of strings
+      default: [],
     },
     tags: {
-      type: [String], // ✅ tags are now plain strings
+      type: [String], // ✅ tags remain as array of strings
       default: [],
     },
     status: {
@@ -142,7 +142,7 @@ postSchema.set("toObject", { virtuals: true });
 // Indexes for performance & search
 postSchema.index({ author: 1, status: 1 });
 postSchema.index({ slug: 1 });
-postSchema.index({ title: "text", content: "text", tags: "text" });
+postSchema.index({ title: "text", content: "text", tags: "text", categories: "text" });
 
 const Post = mongoose.model("Post", postSchema);
 

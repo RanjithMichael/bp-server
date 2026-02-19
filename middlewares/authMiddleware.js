@@ -43,7 +43,8 @@ export const protect = asyncHandler(async (req, res, next) => {
     console.error("JWT verification failed:", error.message);
 
     if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ message: "Token expired, please log in again" });
+      // Distinguish expired tokens clearly
+      return res.status(401).json({ message: "Access token expired" });
     }
 
     return res.status(401).json({ message: "Not authorized, token invalid" });

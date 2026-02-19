@@ -2,8 +2,8 @@ import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
 import Post from "../models/Post.js";
 import Subscription from "../models/Subscription.js";
-import generateToken from "../utils/generateToken.js";
-import { sendEmail } from "../utils/sendEmail.js";   // ✅ Brevo email utility
+import { generateTokens } from "../utils/generateToken.js";   
+import { sendEmail } from "../utils/sendEmail.js";            
 
 /**
  * @desc    Register a new user
@@ -21,7 +21,7 @@ export const registerUser = asyncHandler(async (req, res) => {
   const user = await User.create({ name, username, email, password });
 
   if (user) {
-    // ✅ Send welcome email (non-blocking)
+    
     try {
       await sendEmail({
         to: user.email,
@@ -36,9 +36,19 @@ export const registerUser = asyncHandler(async (req, res) => {
       console.error("Email error:", err.message);
     }
 
+    // ✅ Generate both tokens
+    const { accessToken, refreshToken } = generateTokens(user._id);
+
+    // ✅ Send refresh token in HttpOnly cookie
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
     res.status(201).json({
       success: true,
-      token: generateToken(user._id),
+      accessToken,
       user: {
         _id: user._id,
         name: user.name,
@@ -60,13 +70,20 @@ export const registerUser = asyncHandler(async (req, res) => {
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // ✅ explicitly select password
   const user = await User.findOne({ email }).select("+password");
 
   if (user && (await user.matchPassword(password))) {
+    const { accessToken, refreshToken } = generateTokens(user._id);
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
     res.json({
       success: true,
-      token: generateToken(user._id),
+      accessToken,
       user: {
         _id: user._id,
         name: user.name,
@@ -123,7 +140,7 @@ export const getMyPosts = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     count: posts.length,
-    posts,  
+    posts,
   });
 });
 
@@ -139,14 +156,12 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: "User not found" });
   }
 
-  // Update fields
   user.name = req.body.name || user.name;
   user.email = req.body.email || user.email;
   if (req.body.password) user.password = req.body.password;
   if (req.body.bio !== undefined) user.bio = req.body.bio;
   if (req.body.socialLinks !== undefined) user.socialLinks = req.body.socialLinks;
 
-  // Profile picture
   if (req.file) {
     user.profilePic = `/uploads/${req.file.filename}`;
   } else if (req.body.profilePic !== undefined) {
@@ -238,6 +253,6 @@ export const getUsers = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     count: users.length,
-    users, 
+    users,
   });
 });

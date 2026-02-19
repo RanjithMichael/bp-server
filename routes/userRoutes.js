@@ -10,9 +10,10 @@ import {
   getAuthorPage,
   registerUser,
   loginUser,
-  getUserProfile,   
+  getUserProfile,
 } from "../controllers/userController.js";
 
+import { refreshAccessToken } from "../controllers/authController.js"; 
 import { protect, admin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -42,15 +43,18 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
 });
 
-// ROUTES 
+// ROUTES
 
 // Public routes
 router.post("/register", registerUser); // POST /api/users/register
 router.post("/login", loginUser);       // POST /api/users/login
 router.get("/author/:username", getAuthorPage);
 
+// ✅ Refresh token route
+router.get("/refresh", refreshAccessToken); // GET /api/users/refresh
+
 // Protected routes
-router.get("/profile", protect, getUserProfile); 
+router.get("/profile", protect, getUserProfile);
 router.get("/myposts", protect, getMyPosts);
 router.put("/profile", protect, upload.single("profilePic"), updateUserProfile);
 
