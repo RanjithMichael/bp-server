@@ -1,24 +1,7 @@
 import asyncHandler from "express-async-handler";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
-
- // Token Generators
-
-const generateAccessToken = (user) => {
-  return jwt.sign(
-    { id: user._id, email: user.email },
-    process.env.JWT_SECRET,
-    { expiresIn: "15m" } // short-lived access token
-  );
-};
-
-const generateRefreshToken = (user) => {
-  return jwt.sign(
-    { id: user._id, email: user.email },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: "7d" } // long-lived refresh token
-  );
-};
+import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
 
 /**
  * @desc    Register new user
@@ -51,14 +34,14 @@ const registerUser = asyncHandler(async (req, res) => {
     password,
   });
 
-  const accessToken = generateAccessToken(user);
-  const refreshToken = generateRefreshToken(user);
+  const accessToken = generateAccessToken(user._id, { email: user.email });
+  const refreshToken = generateRefreshToken(user._id, { email: user.email });
 
   // Store refresh token in httpOnly cookie
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
@@ -107,13 +90,13 @@ const loginUser = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: "Account is deactivated. Contact admin." });
   }
 
-  const accessToken = generateAccessToken(user);
-  const refreshToken = generateRefreshToken(user);
+  const accessToken = generateAccessToken(user._id, { email: user.email });
+  const refreshToken = generateRefreshToken(user._id, { email: user.email });
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -151,8 +134,22 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       return res.status(403).json({ success: false, message: "Invalid or inactive user" });
     }
 
-    const accessToken = generateAccessToken(user);
-    res.json({ success: true, accessToken });
+    const accessToken = generateAccessToken(user._id, { email: user.email });
+    const newRefreshToken = generateRefreshToken(user._id, { email: user.email });
+
+    // Rotate refresh token
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({
+      success: true,
+      accessToken,
+      refreshToken: newRefreshToken,
+    });
   } catch (err) {
     console.error("Refresh error:", err.message);
     res.status(403).json({ success: false, message: "Invalid or expired refresh token" });

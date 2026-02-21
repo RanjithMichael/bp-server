@@ -19,7 +19,6 @@ import { protect, author } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
 // Helper: validation middleware
-
 const validate = (validations) => async (req, res, next) => {
   await Promise.all(validations.map((v) => v.run(req)));
   const errors = validationResult(req);
@@ -32,10 +31,9 @@ const validate = (validations) => async (req, res, next) => {
   });
 };
 
+// PUBLIC ROUTES 
 
-// PUBLIC ROUTES
-
-// Get all posts (supports ?search=keyword)
+// Get all posts (supports ?search=keyword, ?page, ?limit)
 router.get("/", getAllPosts);
 
 // Get post by slug
@@ -44,14 +42,13 @@ router.get("/slug/:slug", getPostBySlug);
 // Get posts by user
 router.get("/user/:id", getUserPosts);
 
-// ✅ IMPORTANT: analytics BEFORE :id route
+// Analytics (must come before :id route to avoid conflicts)
 router.get("/:id/analytics", getPostAnalytics);
 
 // Get post by ID
 router.get("/:id", getPostById);
 
-
-// PRIVATE ROUTES
+// PRIVATE ROUTES 
 
 // Create new post (authors/admins only)
 router.post(
@@ -88,8 +85,8 @@ router.put(
 // Delete post (soft delete)
 router.delete("/:id", protect, author, deletePost);
 
-// Like / Unlike post
-router.post("/:id/like", protect, toggleLikePost);
+// Like / Unlike post (PUT for update semantics)
+router.put("/:id/like", protect, toggleLikePost);
 
 // Add comment
 router.post(

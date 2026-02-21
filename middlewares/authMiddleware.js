@@ -9,11 +9,9 @@ import User from "../models/User.js";
 export const protect = asyncHandler(async (req, res, next) => {
   let token;
 
-  // Check for token in Authorization header OR cookies
+  // Access token should always come from Authorization header
   if (req.headers.authorization?.startsWith("Bearer")) {
     token = req.headers.authorization.split(" ")[1];
-  } else if (req.cookies?.token) {
-    token = req.cookies.token;
   }
 
   if (!token) {
@@ -21,10 +19,8 @@ export const protect = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Fetch user from DB (only safe fields)
     const user = await User.findById(decoded.id).select(
       "_id name email role profilePic bio socialLinks isActive"
     );
@@ -37,13 +33,12 @@ export const protect = asyncHandler(async (req, res, next) => {
       return res.status(403).json({ message: "Account is deactivated. Contact admin." });
     }
 
-    req.user = user; // attach user to request
+    req.user = user;
     next();
   } catch (error) {
     console.error("JWT verification failed:", error.message);
 
     if (error.name === "TokenExpiredError") {
-      // Distinguish expired tokens clearly
       return res.status(401).json({ message: "Access token expired" });
     }
 
@@ -64,7 +59,7 @@ export const admin = (req, res, next) => {
 };
 
 /**
- * @desc    Author middleware
+ * @desc    Author middleware (optional)
  * @access  Private/Author
  */
 export const author = (req, res, next) => {
