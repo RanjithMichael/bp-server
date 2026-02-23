@@ -265,6 +265,7 @@ export const updatePost = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: "Not authorized to update this post" });
   }
 
+
   post.title = title || post.title;
   post.content = content || post.content;
   post.category = category || post.category;
@@ -310,19 +311,4 @@ export const deletePost = asyncHandler(async (req, res) => {
 
   res.json({ success: true, message: "Post removed successfully" });
 });
-
-export {
-  createPost,
-  getAllPosts,
-  getPostById,
-  getPostBySlug,
-  toggleLikePost,
-  addComment,
-  deleteComment,   
-  getPostAnalytics,
-  getUserPosts,
-  updatePost,
-  deletePost,
-};
-
 
