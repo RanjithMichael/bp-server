@@ -116,11 +116,11 @@ const loginUser = asyncHandler(async (req, res) => {
 
 /**
  * @desc    Refresh access token using refresh token cookie
- * @route   GET /api/auth/refresh
+ * @route   POST /api/auth/refresh
  * @access  Public (requires valid refresh token cookie)
  */
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  const refreshToken = req.cookies.refreshToken;
+  const refreshToken = req.cookies?.refreshToken;
 
   if (!refreshToken) {
     return res.status(401).json({ success: false, message: "No refresh token provided" });
@@ -147,11 +147,14 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
     res.json({
       success: true,
-      accessToken,
-      refreshToken: newRefreshToken,
+      message: "Token refreshed successfully",
+      data: {
+        accessToken,
+        refreshToken: newRefreshToken,
+      },
     });
   } catch (err) {
-    console.error("Refresh error:", err.message);
+    console.error("Refresh error:", err);
     res.status(403).json({ success: false, message: "Invalid or expired refresh token" });
   }
 });
@@ -170,7 +173,8 @@ const getUserProfile = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    user: {
+    message: "Profile fetched successfully",
+    data: {
       _id: user._id,
       name: user.name,
       email: user.email,
@@ -205,4 +209,10 @@ const deleteUser = asyncHandler(async (req, res) => {
   res.json({ success: true, message: "User deactivated successfully" });
 });
 
-export { registerUser, loginUser, refreshAccessToken, getUserProfile, deleteUser };
+export {
+  registerUser,
+  loginUser,
+  refreshAccessToken,
+  getUserProfile,
+  deleteUser,
+};

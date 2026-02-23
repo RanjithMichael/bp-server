@@ -5,6 +5,7 @@ import path from "path";
 import helmet from "helmet";
 import compression from "compression";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";   
 import { fileURLToPath } from "url";
 
 import connectDB from "./config/db.js";
@@ -21,8 +22,6 @@ import commentRoutes from "./routes/commentRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 
-
-
 // Load env and connect DB
 dotenv.config();
 connectDB();
@@ -38,6 +37,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(helmet());
 app.use(compression());
 app.use(morgan("dev"));
+app.use(cookieParser());   // 👈 enable cookie parsing
 
 // CORS
 const allowedOrigins = [
@@ -73,10 +73,9 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 
-
 // Root
 app.get("/", (req, res) => {
-  res.send("✅Blogging Platform Backend is running!");
+  res.send("✅ Blogging Platform Backend is running!");
 });
 
 // Error handlers
