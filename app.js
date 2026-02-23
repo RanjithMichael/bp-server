@@ -76,7 +76,7 @@ app.use("/api/subscriptions", subscriptionRoutes);
 
 // Root
 app.get("/", (req, res) => {
-  res.json({ message: "✅ Blogging Platform Backend is running!" });
+  res.send("✅Blogging Platform Backend is running!");
 });
 
 // Error handlers
