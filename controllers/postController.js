@@ -116,7 +116,7 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
 
 /**
  * @desc    Like / Unlike a post
- * @route   POST /api/posts/:id/like
+ * @route   PUT /api/posts/:id/like
  * @access  Private
  */
 export const toggleLikePost = asyncHandler(async (req, res) => {
@@ -174,6 +174,41 @@ export const addComment = asyncHandler(async (req, res) => {
     .populate("comments.user", "name profilePic");
 
   res.status(201).json({ success: true, post: updatedPost });
+});
+
+/**
+ * @desc    Delete a comment from a post
+ * @route   DELETE /api/posts/:postId/comments/:commentId
+ * @access  Private (author of comment or admin)
+ */
+export const deleteComment = asyncHandler(async (req, res) => {
+  const { postId, commentId } = req.params;
+
+  const post = await Post.findById(postId);
+  if (!post || !post.isActive) {
+    return res.status(404).json({ success: false, message: "Post not found or removed" });
+  }
+
+  const comment = post.comments.id(commentId);
+  if (!comment) {
+    return res.status(404).json({ success: false, message: "Comment not found" });
+  }
+
+  if (
+    comment.user.toString() !== req.user._id.toString() &&
+    req.user.role !== "admin"
+  ) {
+    return res.status(403).json({ success: false, message: "Not authorized to delete this comment" });
+  }
+
+  comment.remove();
+  await post.save();
+
+  const updatedPost = await Post.findById(postId)
+    .populate("author", "name profilePic")
+    .populate("comments.user", "name profilePic");
+
+  res.json({ success: true, message: "Comment deleted successfully", post: updatedPost });
 });
 
 /**
@@ -275,3 +310,19 @@ export const deletePost = asyncHandler(async (req, res) => {
 
   res.json({ success: true, message: "Post removed successfully" });
 });
+
+export {
+  createPost,
+  getAllPosts,
+  getPostById,
+  getPostBySlug,
+  toggleLikePost,
+  addComment,
+  deleteComment,   
+  getPostAnalytics,
+  getUserPosts,
+  updatePost,
+  deletePost,
+};
+
+
