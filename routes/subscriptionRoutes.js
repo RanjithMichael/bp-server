@@ -12,17 +12,17 @@ import { protect } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
 // General subscriptions (author or category via body)
-
-router.route("/")
+router
+  .route("/")
   .post(protect, createSubscription)   // POST /api/subscriptions
   .get(protect, getMySubscriptions);   // GET /api/subscriptions
 
-// Delete by subscription ID (legacy / specific subscription)
-router.route("/id/:id").delete(protect, deleteSubscription); // DELETE /api/subscriptions/id/:id
+// Delete by subscription ID (cleaner route)
+router.delete("/:id", protect, deleteSubscription); // DELETE /api/subscriptions/:id
 
 // Author-specific subscriptions (via URL param)
-
-router.route("/author/:authorId")
+router
+  .route("/author/:authorId")
   .post(protect, subscribeAuthor)      // POST /api/subscriptions/author/:authorId
   .delete(protect, unsubscribeAuthor); // DELETE /api/subscriptions/author/:authorId
 

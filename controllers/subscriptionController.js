@@ -10,20 +10,28 @@ const createSubscription = asyncHandler(async (req, res) => {
   const { authorId, category } = req.body;
 
   if (!authorId && !category) {
-    return res.status(400).json({ success: false, message: "You must provide either an author or a category" });
+    return res.status(400).json({
+      success: false,
+      message: "You must provide either an author or a category",
+    });
   }
 
   const normalizedCategory = category ? category.trim().toLowerCase() : null;
 
-  // Prevent duplicate subscriptions (case-insensitive for category)
+  // Prevent duplicate subscriptions
   const existing = await Subscription.findOne({
     user: req.user._id,
     ...(authorId && { author: authorId }),
-    ...(normalizedCategory && { category: { $regex: `^${normalizedCategory}$`, $options: "i" } }),
+    ...(normalizedCategory && {
+      category: { $regex: `^${normalizedCategory}$`, $options: "i" },
+    }),
   }).lean();
 
   if (existing) {
-    return res.status(400).json({ success: false, message: "Already subscribed" });
+    return res.status(400).json({
+      success: false,
+      message: "Already subscribed",
+    });
   }
 
   const subscription = new Subscription({
@@ -58,8 +66,8 @@ const getMySubscriptions = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    count: subs.length,
-    data: subs.map(sub => ({
+    message: "Fetched subscriptions",
+    data: subs.map((sub) => ({
       id: sub._id,
       user: sub.user,
       author: sub.author || null,
@@ -70,18 +78,24 @@ const getMySubscriptions = asyncHandler(async (req, res) => {
 
 /**
  * @desc Unsubscribe by subscription ID
- * @route DELETE /api/subscriptions/:id
+ * @route DELETE /api/subscriptions/id/:id
  * @access Private
  */
 const deleteSubscription = asyncHandler(async (req, res) => {
   const sub = await Subscription.findById(req.params.id);
 
   if (!sub) {
-    return res.status(404).json({ success: false, message: "Subscription not found" });
+    return res.status(404).json({
+      success: false,
+      message: "Subscription not found",
+    });
   }
 
   if (sub.user.toString() !== req.user._id.toString()) {
-    return res.status(401).json({ success: false, message: "Not authorized" });
+    return res.status(401).json({
+      success: false,
+      message: "Not authorized",
+    });
   }
 
   await sub.deleteOne();
@@ -89,7 +103,12 @@ const deleteSubscription = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: "Unsubscribed successfully",
-    data: { id: sub._id, user: sub.user, author: sub.author, category: sub.category },
+    data: {
+      id: sub._id,
+      user: sub.user,
+      author: sub.author,
+      category: sub.category,
+    },
   });
 });
 
@@ -108,14 +127,17 @@ const getSubscriptionStatus = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    subscribed: !!existing,
-    subscriptionId: existing?._id || null,
+    message: "Fetched subscription status",
+    data: {
+      subscribed: !!existing,
+      subscriptionId: existing?._id || null,
+    },
   });
 });
 
 /**
  * @desc Subscribe to an author (via URL param)
- * @route POST /api/subscriptions/:authorId
+ * @route POST /api/subscriptions/author/:authorId
  * @access Private
  */
 const subscribeAuthor = asyncHandler(async (req, res) => {
@@ -127,7 +149,10 @@ const subscribeAuthor = asyncHandler(async (req, res) => {
   }).lean();
 
   if (existing) {
-    return res.status(400).json({ success: false, message: "Already subscribed" });
+    return res.status(400).json({
+      success: false,
+      message: "Already subscribed",
+    });
   }
 
   const subscription = new Subscription({
@@ -151,7 +176,7 @@ const subscribeAuthor = asyncHandler(async (req, res) => {
 
 /**
  * @desc Unsubscribe from an author (via URL param)
- * @route DELETE /api/subscriptions/:authorId
+ * @route DELETE /api/subscriptions/author/:authorId
  * @access Private
  */
 const unsubscribeAuthor = asyncHandler(async (req, res) => {
@@ -163,7 +188,10 @@ const unsubscribeAuthor = asyncHandler(async (req, res) => {
   });
 
   if (!sub) {
-    return res.status(404).json({ success: false, message: "Subscription not found" });
+    return res.status(404).json({
+      success: false,
+      message: "Subscription not found",
+    });
   }
 
   await sub.deleteOne();
@@ -171,7 +199,11 @@ const unsubscribeAuthor = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: "Unsubscribed successfully",
-    data: { id: sub._id, user: sub.user, author: sub.author },
+    data: {
+      id: sub._id,
+      user: sub.user,
+      author: sub.author,
+    },
   });
 });
 
