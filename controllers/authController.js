@@ -12,39 +12,28 @@ const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    return res.status(400).json({
-      success: false,
-      message: "All fields are required",
-    });
+    return res.status(400).json({ success: false, message: "All fields are required" });
   }
 
   const normalizedEmail = email.toLowerCase();
   const userExists = await User.findOne({ email: normalizedEmail });
 
   if (userExists) {
-    return res.status(400).json({
-      success: false,
-      message: "User already exists",
-    });
+    return res.status(400).json({ success: false, message: "User already exists" });
   }
 
-  const user = await User.create({
-    name,
-    email: normalizedEmail,
-    password,
-  });
+  const user = await User.create({ name, email: normalizedEmail, password });
 
-  
   const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
   const refreshToken = generateRefreshToken(user._id, { email: user.email });
 
   // Store refresh token in httpOnly cookie
   res.cookie("refreshToken", refreshToken, {
-  httpOnly: true,
-  secure: true,      
-  sameSite: "none",  
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-});
+    httpOnly: true,
+    secure: true,       
+    sameSite: "none",   // ✅ required for Netlify → Render cross-site
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
 
   res.status(201).json({
     success: true,
@@ -93,8 +82,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: true,
+    sameSite: "none",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -132,25 +121,20 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       return res.status(403).json({ success: false, message: "Invalid or inactive user" });
     }
 
-    
     const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
     const newRefreshToken = generateRefreshToken(user._id, { email: user.email });
 
-    // Rotate refresh token
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      secure: true,
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.json({
       success: true,
       message: "Token refreshed successfully",
-      data: {
-        accessToken,
-        refreshToken: newRefreshToken,
-      },
+      data: { accessToken },
     });
   } catch (err) {
     console.error("Refresh error:", err);
