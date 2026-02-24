@@ -34,7 +34,7 @@ const registerUser = asyncHandler(async (req, res) => {
     password,
   });
 
-  // ✅ Access token now lasts 24h
+  
   const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
   const refreshToken = generateRefreshToken(user._id, { email: user.email });
 
@@ -88,7 +88,6 @@ const loginUser = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: "Account is deactivated. Contact admin." });
   }
 
-  // ✅ Access token now lasts 24h
   const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
   const refreshToken = generateRefreshToken(user._id, { email: user.email });
 
@@ -133,7 +132,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       return res.status(403).json({ success: false, message: "Invalid or inactive user" });
     }
 
-    // ✅ Access token now lasts 24h
+    
     const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
     const newRefreshToken = generateRefreshToken(user._id, { email: user.email });
 
