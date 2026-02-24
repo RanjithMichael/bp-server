@@ -34,7 +34,8 @@ const registerUser = asyncHandler(async (req, res) => {
     password,
   });
 
-  const accessToken = generateAccessToken(user._id, { email: user.email });
+  // ✅ Access token now lasts 24h
+  const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
   const refreshToken = generateRefreshToken(user._id, { email: user.email });
 
   // Store refresh token in httpOnly cookie
@@ -68,10 +69,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({
-      success: false,
-      message: "Email and password are required",
-    });
+    return res.status(400).json({ success: false, message: "Email and password are required" });
   }
 
   const normalizedEmail = email.toLowerCase();
@@ -90,7 +88,8 @@ const loginUser = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: "Account is deactivated. Contact admin." });
   }
 
-  const accessToken = generateAccessToken(user._id, { email: user.email });
+  // ✅ Access token now lasts 24h
+  const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
   const refreshToken = generateRefreshToken(user._id, { email: user.email });
 
   res.cookie("refreshToken", refreshToken, {
@@ -134,7 +133,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       return res.status(403).json({ success: false, message: "Invalid or inactive user" });
     }
 
-    const accessToken = generateAccessToken(user._id, { email: user.email });
+    // ✅ Access token now lasts 24h
+    const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
     const newRefreshToken = generateRefreshToken(user._id, { email: user.email });
 
     // Rotate refresh token

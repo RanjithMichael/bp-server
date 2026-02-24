@@ -14,8 +14,8 @@ const router = express.Router();
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 
-// Refresh token route
-router.get("/refresh", refreshAccessToken);
+// Refresh token route (✅ changed to POST to match frontend)
+router.post("/refresh", refreshAccessToken);
 
 // Private routes
 router.get("/profile", protect, getUserProfile);
