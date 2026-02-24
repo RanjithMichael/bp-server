@@ -41,8 +41,8 @@ const registerUser = asyncHandler(async (req, res) => {
   // Store refresh token in httpOnly cookie
   res.cookie("refreshToken", refreshToken, {
   httpOnly: true,
-  secure: true,      // Render is HTTPS
-  sameSite: "none",  // ✅ required for Netlify → Render
+  secure: true,      
+  sameSite: "none",  
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 });
 
