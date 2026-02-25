@@ -22,21 +22,22 @@ export const addComment = asyncHandler(async (req, res) => {
     throw new Error("Post not found or removed");
   }
 
-  // ✅ Create comment in Comment collection
+  // Create comment in Comment collection
   const comment = await Comment.create({
     text: text.trim(),
     context,
-    user: req.user._id, // fixed field name
+    user: req.user._id, // user comes from auth middleware
     post: postId,
   });
 
-  // ✅ Push reference into Post.comments array
+  // Push reference into Post.comments array
   post.comments.push(comment._id);
   await post.save();
 
+  // Populate user details for immediate frontend use
   const populatedComment = await Comment.findById(comment._id).populate(
     "user",
-    "name email profilePic"
+    "_id name email profilePic"
   );
 
   res.status(201).json({
@@ -54,7 +55,7 @@ export const getCommentsByPost = asyncHandler(async (req, res) => {
   const postId = req.params.postId;
 
   const comments = await Comment.find({ post: postId, isDeleted: false })
-    .populate("user", "name email profilePic")
+    .populate("user", "_id name email profilePic")
     .sort({ createdAt: -1 });
 
   res.json({
@@ -77,6 +78,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
     throw new Error("Comment not found");
   }
 
+  // Only author or admin can delete
   if (
     comment.user.toString() !== req.user._id.toString() &&
     req.user.role !== "admin"
@@ -85,7 +87,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
     throw new Error("Not authorized to delete this comment");
   }
 
-  // ✅ Soft delete instead of permanent removal
+  // Soft delete instead of permanent removal
   comment.isDeleted = true;
   await comment.save();
 

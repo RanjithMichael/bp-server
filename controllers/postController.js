@@ -99,20 +99,25 @@ export const getPostById = asyncHandler(async (req, res) => {
  * @route   GET /api/posts/slug/:slug
  * @access  Public
  */
-export const getPostBySlug = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ slug: req.params.slug, status: "published", isActive: true })
-    .populate("author", "name email profilePic")
-    .populate("comments.user", "name profilePic");
+export const getPostBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
 
-  if (!post) {
-    return res.status(404).json({ success: false, message: "Post not found or removed" });
+    const post = await Post.findOne({ slug })
+      .populate("author", "_id name username")
+      .populate("comments.user", "_id name username");
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    res.json({ post });
+  } catch (err) {
+    console.error("Error fetching post:", err);
+    res.status(500).json({ message: "Server error" });
   }
+};
 
-  post.views = (post.views || 0) + 1;
-  await post.save();
-
-  res.status(200).json({ success: true, post });
-});
 
 /**
  * @desc    Like / Unlike a post
