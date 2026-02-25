@@ -66,19 +66,19 @@ export const getCommentsByPost = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Delete comment (soft delete)
+ * @desc    Delete comment (soft delete + remove reference from Post)
  * @route   DELETE /api/comments/:id
  * @access  Private (author or admin)
  */
 export const deleteComment = asyncHandler(async (req, res) => {
-  const comment = await Comment.findById(req.params.id);
+  const { postId, commentId } = req.params;
 
+  const comment = await Comment.findOne({ _id: commentId, post: postId });
   if (!comment) {
     res.status(404);
     throw new Error("Comment not found");
   }
 
-  // Only author or admin can delete
   if (
     comment.user.toString() !== req.user._id.toString() &&
     req.user.role !== "admin"
@@ -87,9 +87,12 @@ export const deleteComment = asyncHandler(async (req, res) => {
     throw new Error("Not authorized to delete this comment");
   }
 
-  // Soft delete instead of permanent removal
+  // Soft delete
   comment.isDeleted = true;
   await comment.save();
+
+  // Remove reference from Post.comments array
+  await Post.findByIdAndUpdate(postId, { $pull: { comments: commentId } });
 
   res.json({ success: true, message: "Comment deleted (soft)" });
 });
