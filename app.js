@@ -41,23 +41,21 @@ app.use(cookieParser());   // 👈 enable cookie parsing
 
 // CORS
 const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:5175",
-  "https://bpclient.netlify.app",
+  "http://localhost:5173", // dev
+  "https://bpclient.netlify.app", // production
 ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("CORS policy: Origin not allowed"));
-    },
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn("Blocked by CORS:", origin);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+}));
 
 // Static uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
