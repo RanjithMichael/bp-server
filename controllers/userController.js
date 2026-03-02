@@ -2,8 +2,8 @@ import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
 import Post from "../models/Post.js";
 import Subscription from "../models/Subscription.js";
-import { generateTokens } from "../utils/generateToken.js";   
-import { sendEmail } from "../utils/sendEmail.js";            
+import { generateTokens } from "../utils/generateToken.js";
+import { sendEmail } from "../utils/sendEmail.js";
 
 /**
  * @desc    Register a new user
@@ -20,46 +20,46 @@ export const registerUser = asyncHandler(async (req, res) => {
 
   const user = await User.create({ name, username, email, password });
 
-  if (user) {
-    
-    try {
-      await sendEmail({
-        to: user.email,
-        subject: "Welcome to Blogging Platform 🎉",
-        htmlContent: `
-          <h2>Hello ${user.name},</h2>
-          <p>Thanks for registering on our Blogging Platform!</p>
-          <p>You can now log in and start creating posts.</p>
-        `,
-      });
-    } catch (err) {
-      console.error("Email error:", err.message);
-    }
-
-    // ✅ Generate both tokens
-    const { accessToken, refreshToken } = generateTokens(user._id);
-
-    // ✅ Send refresh token in HttpOnly cookie
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    res.status(201).json({
-      success: true,
-      accessToken,
-      user: {
-        _id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        profilePic: user.profilePic,
-      },
-    });
-  } else {
-    res.status(400).json({ success: false, message: "Invalid user data" });
+  if (!user) {
+    return res.status(400).json({ success: false, message: "Invalid user data" });
   }
+
+  // Send welcome email (non-blocking)
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: "Welcome to Blogging Platform 🎉",
+      htmlContent: `
+        <h2>Hello ${user.name},</h2>
+        <p>Thanks for registering on our Blogging Platform!</p>
+        <p>You can now log in and start creating posts.</p>
+      `,
+    });
+  } catch (err) {
+    console.error("Email error:", err.message);
+  }
+
+  // Generate tokens
+  const { accessToken, refreshToken } = generateTokens(user._id);
+
+  // Send refresh token in HttpOnly cookie
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+
+  res.status(201).json({
+    success: true,
+    accessToken,
+    user: {
+      _id: user._id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      profilePic: user.profilePic,
+    },
+  });
 });
 
 /**
@@ -72,29 +72,29 @@ export const loginUser = asyncHandler(async (req, res) => {
 
   const user = await User.findOne({ email }).select("+password");
 
-  if (user && (await user.matchPassword(password))) {
-    const { accessToken, refreshToken } = generateTokens(user._id);
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    res.json({
-      success: true,
-      accessToken,
-      user: {
-        _id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        profilePic: user.profilePic,
-      },
-    });
-  } else {
-    res.status(401).json({ success: false, message: "Invalid email or password" });
+  if (!user || !(await user.matchPassword(password))) {
+    return res.status(401).json({ success: false, message: "Invalid email or password" });
   }
+
+  const { accessToken, refreshToken } = generateTokens(user._id);
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+
+  res.json({
+    success: true,
+    accessToken,
+    user: {
+      _id: user._id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      profilePic: user.profilePic,
+    },
+  });
 });
 
 /**
@@ -137,7 +137,7 @@ export const getMyPosts = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .populate("author", "name username email profilePic");
 
-  res.status(200).json({
+  res.json({
     success: true,
     count: posts.length,
     posts,
@@ -156,8 +156,8 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: "User not found" });
   }
 
-  user.name = req.body.name || user.name;
-  user.email = req.body.email || user.email;
+  user.name = req.body.name ?? user.name;
+  user.email = req.body.email ?? user.email;
   if (req.body.password) user.password = req.body.password;
   if (req.body.bio !== undefined) user.bio = req.body.bio;
   if (req.body.socialLinks !== undefined) user.socialLinks = req.body.socialLinks;
@@ -228,7 +228,7 @@ export const getAuthorPage = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .populate("author", "name username profilePic");
 
-  res.status(200).json({
+  res.json({
     success: true,
     author: {
       _id: user._id,
@@ -243,7 +243,7 @@ export const getAuthorPage = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get all users (for admin)
+ * @desc    Get all users (admin only)
  * @route   GET /api/users
  * @access  Private/Admin
  */

@@ -14,9 +14,8 @@ router.route("/:postId")
   .get(getCommentsByPost);     // GET /api/comments/:postId → get comments
 
 // Route for deleting a comment by ID
-router.route("/:postId/comments/:commentId")
+ router.route("/:postId/comments/:commentId")
   .delete(protect, deleteComment); // DELETE /api/comments/:postId/comments/:commentId → delete comment
-
 export default router;
 
 

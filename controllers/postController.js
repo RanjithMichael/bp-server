@@ -32,7 +32,8 @@ export const createPost = asyncHandler(async (req, res) => {
     shares: 0,
   });
 
-  const populatedPost = await Post.findById(post._id).populate("author", "name email profilePic");
+  const populatedPost = await Post.findById(post._id)
+    .populate("author", "_id name email profilePic");
 
   res.status(201).json({ success: true, post: populatedPost });
 });
@@ -64,7 +65,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("author", "name profilePic"),
+      .populate("author", "_id name profilePic"),
     Post.countDocuments(filter),
   ]);
 
@@ -84,8 +85,8 @@ export const getAllPosts = asyncHandler(async (req, res) => {
  */
 export const getPostById = asyncHandler(async (req, res) => {
   const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isActive: true })
-    .populate("author", "name email profilePic")
-    .populate("comments.user", "name profilePic");
+    .populate("author", "_id name email profilePic")
+    .populate("comments.user", "_id name profilePic");
 
   if (!post) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
@@ -104,8 +105,8 @@ export const getPostBySlug = async (req, res) => {
     const { slug } = req.params;
 
     const post = await Post.findOne({ slug })
-      .populate("author", "_id name username")
-      .populate("comments.user", "_id name username");
+      .populate("author", "_id name username profilePic")
+      .populate("comments.user", "_id name username profilePic");
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
@@ -117,7 +118,6 @@ export const getPostBySlug = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 /**
  * @desc    Like / Unlike a post
@@ -175,8 +175,8 @@ export const addComment = asyncHandler(async (req, res) => {
   await post.save();
 
   const updatedPost = await Post.findById(req.params.id)
-    .populate("author", "name profilePic")
-    .populate("comments.user", "name profilePic");
+    .populate("author", "_id name profilePic")
+    .populate("comments.user", "_id name profilePic");
 
   res.status(201).json({ success: true, post: updatedPost });
 });
@@ -210,8 +210,8 @@ export const deleteComment = asyncHandler(async (req, res) => {
   await post.save();
 
   const updatedPost = await Post.findById(postId)
-    .populate("author", "name profilePic")
-    .populate("comments.user", "name profilePic");
+    .populate("author", "_id name profilePic")
+    .populate("comments.user", "_id name profilePic");
 
   res.json({ success: true, message: "Comment deleted successfully", post: updatedPost });
 });
@@ -246,7 +246,7 @@ export const getPostAnalytics = asyncHandler(async (req, res) => {
  */
 export const getUserPosts = asyncHandler(async (req, res) => {
   const posts = await Post.find({ author: req.params.id, status: { $ne: "removed" }, isActive: true })
-    .populate("author", "name profilePic")
+    .populate("author", "_id name profilePic")
     .sort({ createdAt: -1 });
 
   res.json({ success: true, posts });
@@ -266,11 +266,12 @@ export const updatePost = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
+  // Only author or admin can update
   if (post.author.toString() !== req.user._id.toString() && req.user.role !== "admin") {
     return res.status(403).json({ success: false, message: "Not authorized to update this post" });
   }
 
-
+  // Update fields
   post.title = title || post.title;
   post.content = content || post.content;
   post.category = category || post.category;
@@ -280,7 +281,9 @@ export const updatePost = asyncHandler(async (req, res) => {
 
   await post.save();
 
-  const updatedPost = await Post.findById(post._id).populate("author", "name profilePic");
+  const updatedPost = await Post.findById(post._id)
+    .populate("author", "_id name profilePic")
+    .populate("comments.user", "_id name profilePic");
 
   res.json({ success: true, post: updatedPost });
 });
@@ -316,4 +319,3 @@ export const deletePost = asyncHandler(async (req, res) => {
 
   res.json({ success: true, message: "Post removed successfully" });
 });
-
