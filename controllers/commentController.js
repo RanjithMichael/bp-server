@@ -68,14 +68,17 @@ export const getCommentsByPost = asyncHandler(async (req, res) => {
  * @route   DELETE /api/comments/:postId/:commentId
  * @access  Private (author or admin)
  */
+
 export const deleteComment = asyncHandler(async (req, res) => {
   const { postId, commentId } = req.params;
 
+  // Guard clause: make sure post exists
   const post = await Post.findById(postId);
   if (!post) {
-    return res.status(404).json({ success: false, message: "Post not found or removed" });
+    return res.status(404).json({ success: false, message: "Post not found" });
   }
 
+  // Find the comment
   const comment = await Comment.findById(commentId);
   if (!comment || comment.isDeleted) {
     return res.status(404).json({ success: false, message: "Comment not found" });
@@ -86,7 +89,9 @@ export const deleteComment = asyncHandler(async (req, res) => {
     comment.user.toString() !== req.user._id.toString() &&
     req.user.role !== "admin"
   ) {
-    return res.status(403).json({ success: false, message: "Not authorized to delete this comment" });
+    return res
+      .status(403)
+      .json({ success: false, message: "Not authorized to delete this comment" });
   }
 
   // Remove reference from Post.comments
@@ -99,3 +104,5 @@ export const deleteComment = asyncHandler(async (req, res) => {
 
   res.json({ success: true, message: "Comment deleted successfully" });
 });
+
+
