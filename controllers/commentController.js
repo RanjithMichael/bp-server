@@ -91,7 +91,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: "Not authorized to delete this comment" });
   }
 
-  // ✅ Safe removal of reference from Post.comments
+  // ✅ Safe removal of reference from Post.comments (no .remove())
   post.comments = post.comments.filter(
     (cId) => cId.toString() !== commentId.toString()
   );
