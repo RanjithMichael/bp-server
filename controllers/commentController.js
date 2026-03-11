@@ -68,7 +68,6 @@ export const getCommentsByPost = asyncHandler(async (req, res) => {
  * @route   DELETE /api/comments/:postId/:commentId
  * @access  Private (author or admin)
  */
-
 export const deleteComment = asyncHandler(async (req, res) => {
   const { postId, commentId } = req.params;
 
@@ -89,20 +88,18 @@ export const deleteComment = asyncHandler(async (req, res) => {
     comment.user.toString() !== req.user._id.toString() &&
     req.user.role !== "admin"
   ) {
-    return res
-      .status(403)
-      .json({ success: false, message: "Not authorized to delete this comment" });
+    return res.status(403).json({ success: false, message: "Not authorized to delete this comment" });
   }
 
-  // Remove reference from Post.comments
-  post.comments.pull(commentId);
+  // ✅ Safe removal of reference from Post.comments
+  post.comments = post.comments.filter(
+    (cId) => cId.toString() !== commentId.toString()
+  );
   await post.save();
 
-  // Soft delete the comment
+  // ✅ Soft delete the comment
   comment.isDeleted = true;
   await comment.save();
 
   res.json({ success: true, message: "Comment deleted successfully" });
 });
-
-
