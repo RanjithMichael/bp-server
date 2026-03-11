@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import slugify from "slugify";
 
-// Comment Schema (embedded for quick access)
+// 🔹 Embedded Comment Schema
 const commentSchema = new mongoose.Schema(
   {
     user: {
@@ -27,7 +27,7 @@ const commentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Post Schema
+// 🔹 Post Schema
 const postSchema = new mongoose.Schema(
   {
     title: {
@@ -57,11 +57,11 @@ const postSchema = new mongoose.Schema(
       required: true,
     },
     categories: {
-      type: [String], // ✅ now an array of strings
+      type: [String],
       default: [],
     },
     tags: {
-      type: [String], // ✅ tags remain as array of strings
+      type: [String],
       default: [],
     },
     status: {
@@ -91,12 +91,12 @@ const postSchema = new mongoose.Schema(
         index: true,
       },
     ],
-    comments: [commentSchema],
+    comments: [commentSchema], // embedded comments
   },
   { timestamps: true }
 );
 
-// Slug Generator
+// 🔹 Slug Generator
 postSchema.pre("save", async function (next) {
   if (!this.title || !this.isModified("title")) return next();
 
@@ -122,28 +122,60 @@ postSchema.pre("save", async function (next) {
   next();
 });
 
-// Virtuals (for analytics UI)
+// 🔹 Virtuals (analytics UI)
 postSchema.virtual("likesCount").get(function () {
   return this.likes?.length || 0;
 });
 
 postSchema.virtual("commentsCount").get(function () {
-  return this.comments?.length || 0;
+  return this.comments?.filter((c) => !c.isDeleted).length || 0;
 });
 
 postSchema.virtual("sharesCount").get(function () {
   return this.shares || 0;
 });
 
-// Enable virtuals in API response
+// 🔹 Enable virtuals in API response
 postSchema.set("toJSON", { virtuals: true });
 postSchema.set("toObject", { virtuals: true });
 
-// Indexes for performance & search
+// 🔹 Indexes for performance & search
 postSchema.index({ author: 1, status: 1 });
 postSchema.index({ slug: 1 });
-postSchema.index({ title: "text", content: "text", tags: "text", categories: "text" });
+postSchema.index({
+  title: "text",
+  content: "text",
+  tags: "text",
+  categories: "text",
+});
 
-const Post = mongoose.model("Post", postSchema);
+// 🔹 Static helpers for safe comment management
+postSchema.statics.softDeleteComment = async function (postId, commentId) {
+  const post = await this.findById(postId);
+  if (!post) return null;
+
+  const comment = post.comments.id(commentId);
+  if (!comment) return null;
+
+  comment.isDeleted = true;
+  await post.save();
+
+  return comment;
+};
+
+postSchema.statics.hardDeleteComment = async function (postId, commentId) {
+  const post = await this.findById(postId);
+  if (!post) return null;
+
+  // Remove comment entirely from array
+  post.comments = post.comments.filter(
+    (c) => c._id.toString() !== commentId.toString()
+  );
+  await post.save();
+
+  return true;
+};
+
+const Post = mongoose.models.Post || mongoose.model("Post", postSchema);
 
 export default Post;
