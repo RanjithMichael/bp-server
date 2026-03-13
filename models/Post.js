@@ -57,11 +57,11 @@ const postSchema = new mongoose.Schema(
       required: true,
     },
     categories: {
-      type: [String],
+      type: [String],   // ✅ array of categories
       default: [],
     },
     tags: {
-      type: [String],
+      type: [String],   // ✅ array of tags
       default: [],
     },
     status: {
