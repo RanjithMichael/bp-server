@@ -229,5 +229,4 @@ export {
   refreshAccessToken,
   getUserProfile,
   deleteUser,
-  forgotPassword,   
 };
