@@ -1,7 +1,9 @@
 import asyncHandler from "express-async-handler";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import User from "../models/User.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
+import sendResetEmail from "../utils/sendResetEmail.js";
 
 /**
  * @desc    Register new user
@@ -30,7 +32,7 @@ const registerUser = asyncHandler(async (req, res) => {
   // Store refresh token in httpOnly cookie
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: true,       
+    secure: true,
     sameSite: "none",   // ✅ required for Netlify → Render cross-site
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
@@ -192,10 +194,40 @@ const deleteUser = asyncHandler(async (req, res) => {
   res.json({ success: true, message: "User deactivated successfully" });
 });
 
+/**
+ * @desc    Forgot password - send reset email
+ * @route   POST /api/auth/forgot-password
+ * @access  Public
+ */
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found" });
+  }
+
+  // Generate reset token
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  // Hash token before saving to DB
+  user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+  user.resetPasswordExpire = Date.now() + 60 * 60 * 1000; // 1 hour expiry
+
+  await user.save();
+
+  // Send reset email
+  await sendResetEmail(user.email, resetToken);
+
+  res.json({ success: true, message: "Password reset email sent" });
+});
+
+
 export {
   registerUser,
   loginUser,
   refreshAccessToken,
   getUserProfile,
   deleteUser,
+  forgotPassword,   
 };

@@ -5,6 +5,7 @@ import {
   getUserProfile,
   deleteUser,
   refreshAccessToken,
+  forgotPassword,
 } from "../controllers/authController.js";
 import { protect, admin } from "../middlewares/authMiddleware.js";
 
@@ -13,6 +14,11 @@ const router = express.Router();
 // Public routes
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+
+
+// Forgot password route
+router.post("/forgot-password", forgotPassword);
+
 
 // Refresh token route (✅ changed to POST to match frontend)
 router.post("/refresh", refreshAccessToken);
