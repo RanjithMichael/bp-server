@@ -3,7 +3,7 @@ import SibApiV3Sdk from "sib-api-v3-sdk";
 
 const client = SibApiV3Sdk.ApiClient.instance;
 const apiKey = client.authentications["api-key"];
-apiKey.apiKey = process.env.BREVO_API_KEY;
+apiKey.apiKey = process.env.BREVO_API_KEY; // make sure this is set in .env
 
 const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
@@ -15,9 +15,14 @@ export const sendEmail = async ({ to, subject, htmlContent }) => {
     sendSmtpEmail.subject = subject;
     sendSmtpEmail.htmlContent = htmlContent;
 
-    await tranEmailApi.sendTransacEmail(sendSmtpEmail);
-    console.log("✅ Email sent successfully");
+    const response = await tranEmailApi.sendTransacEmail(sendSmtpEmail);
+    console.log("✅ Email sent successfully:", response);
   } catch (error) {
-    console.error("❌ Email sending failed:", error);
+    // Log Brevo’s detailed error response if available
+    if (error.response && error.response.body) {
+      console.error("❌ Email sending failed:", error.response.body);
+    } else {
+      console.error("❌ Email sending failed:", error);
+    }
   }
 };
