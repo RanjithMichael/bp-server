@@ -5,73 +5,62 @@ import User from "../models/User.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
 import sendResetEmail from "../utils/sendResetEmail.js";
 
-/**
- * @desc    Register new user
- * @route   POST /api/auth/register
- * @access  Public
- */
-const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
+// Helper: set refresh cookie
+const setRefreshCookie = (res, token) => {
+  res.cookie("refreshToken", token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+};
 
+/** REGISTER */
+export const registerUser = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
   if (!name || !email || !password) {
     return res.status(400).json({ success: false, message: "All fields are required" });
   }
 
   const normalizedEmail = email.toLowerCase();
   const userExists = await User.findOne({ email: normalizedEmail });
-
   if (userExists) {
     return res.status(400).json({ success: false, message: "User already exists" });
   }
 
   const user = await User.create({ name, email: normalizedEmail, password });
 
-  const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
+  const accessToken = generateAccessToken(user._id, { email: user.email }, "15m");
   const refreshToken = generateRefreshToken(user._id, { email: user.email });
 
-  // Store refresh token in httpOnly cookie
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",   // ✅ required for Netlify → Render cross-site
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  });
+  setRefreshCookie(res, refreshToken);
 
   res.status(201).json({
     success: true,
     message: "User registered successfully",
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      isActive: user.isActive,
+    data: {
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+      },
+      accessToken,
     },
-    accessToken,
   });
 });
 
-/**
- * @desc    Login user
- * @route   POST /api/auth/login
- * @access  Public
- */
-const loginUser = asyncHandler(async (req, res) => {
+/** LOGIN */
+export const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-
   if (!email || !password) {
     return res.status(400).json({ success: false, message: "Email and password are required" });
   }
 
   const normalizedEmail = email.toLowerCase();
   const user = await User.findOne({ email: normalizedEmail }).select("+password");
-
-  if (!user || !user.password) {
-    return res.status(401).json({ success: false, message: "Invalid email or password" });
-  }
-
-  const isMatch = await user.matchPassword(password);
-  if (!isMatch) {
+  if (!user || !(await user.matchPassword(password))) {
     return res.status(401).json({ success: false, message: "Invalid email or password" });
   }
 
@@ -79,38 +68,30 @@ const loginUser = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: "Account is deactivated. Contact admin." });
   }
 
-  const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
+  const accessToken = generateAccessToken(user._id, { email: user.email }, "15m");
   const refreshToken = generateRefreshToken(user._id, { email: user.email });
 
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, refreshToken);
 
   res.json({
     success: true,
     message: "Login successful",
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      isActive: user.isActive,
+    data: {
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+      },
+      accessToken,
     },
-    accessToken,
   });
 });
 
-/**
- * @desc    Refresh access token using refresh token cookie
- * @route   POST /api/auth/refresh
- * @access  Public (requires valid refresh token cookie)
- */
-const refreshAccessToken = asyncHandler(async (req, res) => {
+/** REFRESH */
+export const refreshAccessToken = asyncHandler(async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
-
   if (!refreshToken) {
     return res.status(401).json({ success: false, message: "No refresh token provided" });
   }
@@ -118,20 +99,14 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const user = await User.findById(decoded.id);
-
     if (!user || !user.isActive) {
       return res.status(403).json({ success: false, message: "Invalid or inactive user" });
     }
 
-    const accessToken = generateAccessToken(user._id, { email: user.email }, "24h");
+    const accessToken = generateAccessToken(user._id, { email: user.email }, "15m");
     const newRefreshToken = generateRefreshToken(user._id, { email: user.email });
 
-    res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshCookie(res, newRefreshToken);
 
     res.json({
       success: true,
@@ -139,19 +114,15 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       data: { accessToken },
     });
   } catch (err) {
-    console.error("Refresh error:", err);
+    console.error("Refresh error:", err.message);
+    res.clearCookie("refreshToken");
     res.status(403).json({ success: false, message: "Invalid or expired refresh token" });
   }
 });
 
-/**
- * @desc    Get user profile
- * @route   GET /api/auth/profile
- * @access  Private
- */
-const getUserProfile = asyncHandler(async (req, res) => {
+/** PROFILE */
+export const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select("-password");
-
   if (!user) {
     return res.status(404).json({ success: false, message: "User not found" });
   }
@@ -159,74 +130,41 @@ const getUserProfile = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: "Profile fetched successfully",
-    data: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      bio: user.bio,
-      profilePic: user.profilePic,
-      socialLinks: user.socialLinks,
-      isActive: user.isActive,
-    },
+    data: user,
   });
 });
 
-/**
- * @desc    Delete user (Admin only)
- * @route   DELETE /api/auth/:id
- * @access  Private/Admin
- */
-const deleteUser = asyncHandler(async (req, res) => {
+/** DELETE USER (Admin) */
+export const deleteUser = asyncHandler(async (req, res) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ success: false, message: "Not authorized as admin" });
   }
 
   const user = await User.findById(req.params.id);
-
   if (!user) {
     return res.status(404).json({ success: false, message: "User not found" });
   }
 
-  user.isActive = false; // soft delete
+  user.isActive = false;
   await user.save();
 
   res.json({ success: true, message: "User deactivated successfully" });
 });
 
-/**
- * @desc    Forgot password - send reset email
- * @route   POST /api/auth/forgot-password
- * @access  Public
- */
+/** FORGOT PASSWORD */
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
-
   if (!user) {
     return res.status(404).json({ success: false, message: "User not found" });
   }
 
-  // Generate reset token
   const resetToken = crypto.randomBytes(32).toString("hex");
-
-  // Hash token before saving to DB
   user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-  user.resetPasswordExpire = Date.now() + 60 * 60 * 1000; // 1 hour expiry
-
+  user.resetPasswordExpire = Date.now() + 60 * 60 * 1000; // 1 hour
   await user.save();
 
-  // Send reset email
   await sendResetEmail(user.email, resetToken);
 
   res.json({ success: true, message: "Password reset email sent" });
 });
-
-
-export {
-  registerUser,
-  loginUser,
-  refreshAccessToken,
-  getUserProfile,
-  deleteUser,
-};
