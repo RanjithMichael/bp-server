@@ -38,16 +38,14 @@ export const registerUser = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: "User registered successfully",
-    data: {
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-      },
-      accessToken,
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
     },
+    accessToken, // ✅ flattened
   });
 });
 
@@ -76,16 +74,14 @@ export const loginUser = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: "Login successful",
-    data: {
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-      },
-      accessToken,
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
     },
+    accessToken, // ✅ flattened
   });
 });
 
@@ -111,7 +107,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     res.json({
       success: true,
       message: "Token refreshed successfully",
-      data: { accessToken },
+      accessToken, // ✅ flattened
     });
   } catch (err) {
     console.error("Refresh error:", err.message);
@@ -130,7 +126,7 @@ export const getUserProfile = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: "Profile fetched successfully",
-    data: user,
+    user, // ✅ flattened
   });
 });
 
