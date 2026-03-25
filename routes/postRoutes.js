@@ -102,5 +102,5 @@ router.post(
 );
 
 // Delete comment
-router.delete("/:postId/comments/:commentId", protect, deleteComment); 
+router.delete("/:id/comments/:commentId", protect, deleteComment);
 export default router;

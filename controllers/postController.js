@@ -23,8 +23,14 @@ export const createPost = asyncHandler(async (req, res) => {
     isActive: true,
   });
 
-  const populatedPost = await Post.findById(post._id).populate("author", "_id name email profilePic");
-  res.status(201).json({ success: true, message: "Post created successfully", data: populatedPost });
+  const populatedPost = await Post.findById(post._id)
+    .populate("author", "_id name email profilePic");
+
+  res.status(201).json({
+    success: true,
+    message: "Post created successfully",
+    post: populatedPost, //flattened
+  });
 });
 
 /** GET ALL POSTS (paginated + search) */
@@ -56,7 +62,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    data: posts,
+    posts,
     currentPage: page,
     totalPages: Math.ceil(totalPosts / limit),
     totalPosts,
@@ -65,50 +71,75 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 
 /** GET SINGLE POST BY ID */
 export const getPostById = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isActive: true })
-    .populate("author", "_id name email profilePic")
+  const { id } = req.params;
+
+  const post = await Post.findById(id)
+    .populate("author", "_id name profilePic")
+    .populate("comments.user", "_id name profilePic");
+
+  if (!post || !post.isActive || post.status === "removed") {
+    return res.status(404).json({ success: false, message: "Post not found or removed" });
+  }
+
+  //Filter out soft-deleted comments before sending
+  const filteredPost = post.toObject();
+  filteredPost.comments = filteredPost.comments.filter(c => !c.isDeleted);
+
+  res.json({ success: true, post: filteredPost });
+});
+
+/** GET POST BY SLUG (increment views) */
+export const getPostBySlug = asyncHandler(async (req, res) => {
+  const { slug } = req.params;
+
+  const post = await Post.findOne({ slug, isActive: true, status: "published" })
+    .populate("author", "_id name profilePic")
     .populate("comments.user", "_id name profilePic");
 
   if (!post) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
-  res.json({ success: true, data: post });
-});
+  //Filter out soft-deleted comments before sending
+  const filteredPost = post.toObject();
+  filteredPost.comments = filteredPost.comments.filter(c => !c.isDeleted);
 
-/** GET POST BY SLUG (increment views) */
-export const getPostBySlug = asyncHandler(async (req, res) => {
-  const { slug } = req.params;
-  const post = await Post.findOne({ slug })
-    .populate("author", "_id name username profilePic")
-    .populate("comments.user", "_id name username profilePic");
-
-  if (!post) {
-    return res.status(404).json({ success: false, message: "Post not found" });
-  }
-
-  post.views = (post.views || 0) + 1;
-  await post.save();
-
-  res.json({ success: true, data: post });
+  res.json({ success: true, post: filteredPost });
 });
 
 /** TOGGLE LIKE */
 export const toggleLikePost = asyncHandler(async (req, res) => {
-  const updatedPost = await Post.toggleLike(req.params.id, req.user._id);
-  if (!updatedPost) {
+  const post = await Post.findById(req.params.id);
+  if (!post || !post.isActive) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
-  res.json({ success: true, message: "Like toggled", data: updatedPost });
+
+  const userId = req.user._id.toString();
+  if (post.likes.includes(userId)) {
+    post.likes = post.likes.filter(id => id.toString() !== userId);
+  } else {
+    post.likes.push(userId);
+  }
+  await post.save();
+
+  const updatedPost = await Post.findById(req.params.id)
+    .populate("author", "_id name profilePic")
+    .populate("comments.user", "_id name profilePic");
+
+  res.json({ success: true, message: "Like toggled", post: updatedPost });
 });
 
 /** INCREMENT SHARE */
 export const incrementSharePost = asyncHandler(async (req, res) => {
-  const updatedPost = await Post.incrementShare(req.params.id);
-  if (!updatedPost) {
+  const post = await Post.findById(req.params.id);
+  if (!post || !post.isActive) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
-  res.json({ success: true, message: "Post shared", data: updatedPost });
+
+  post.shares = (post.shares || 0) + 1;
+  await post.save();
+
+  res.json({ success: true, message: "Post shared", post });
 });
 
 /** ADD COMMENT */
@@ -130,7 +161,7 @@ export const addComment = asyncHandler(async (req, res) => {
     .populate("author", "_id name profilePic")
     .populate("comments.user", "_id name profilePic");
 
-  res.status(201).json({ success: true, message: "Comment added", data: updatedPost });
+  res.status(201).json({ success: true, message: "Comment added", post: updatedPost });
 });
 
 /** DELETE COMMENT */
@@ -157,26 +188,31 @@ export const deleteComment = asyncHandler(async (req, res) => {
     .populate("author", "_id name profilePic")
     .populate("comments.user", "_id name profilePic");
 
-  res.json({ success: true, message: "Comment deleted successfully", data: updatedPost });
+  res.json({ success: true, message: "Comment deleted successfully", post: updatedPost });
 });
 
 /** GET POST ANALYTICS */
 export const getPostAnalytics = asyncHandler(async (req, res) => {
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isActive: true });
-  if (!post) {
+  const { postId } = req.params;
+
+  const post = await Post.findById(postId)
+    .populate("author", "_id name profilePic");
+
+  if (!post || !post.isActive || post.status === "removed") {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
-  res.json({
-    success: true,
-    data: {
-      views: post.views || 0,
-      likes: post.likes?.length || 0,
-      shares: post.shares || 0,
-      comments: post.comments?.filter((c) => !c.isDeleted).length || 0,
-    },
-  });
+  //Use virtuals defined in schema
+  const analytics = {
+    likesCount: post.likesCount,
+    commentsCount: post.commentsCount, // filters out isDeleted automatically
+    sharesCount: post.sharesCount,
+    views: post.views,
+  };
+
+  res.json({ success: true, analytics });
 });
+
 
 /** GET USER POSTS */
 export const getUserPosts = asyncHandler(async (req, res) => {
@@ -184,7 +220,7 @@ export const getUserPosts = asyncHandler(async (req, res) => {
     .populate("author", "_id name profilePic")
     .sort({ createdAt: -1 });
 
-  res.json({ success: true, data: posts });
+  res.json({ success: true, posts });
 });
 
 /** UPDATE POST */
@@ -212,7 +248,7 @@ export const updatePost = asyncHandler(async (req, res) => {
     .populate("author", "_id name profilePic")
     .populate("comments.user", "_id name profilePic");
 
-  res.json({ success: true, message: "Post updated successfully", data: updatedPost });
+  res.json({ success: true, message: "Post updated successfully", post: updatedPost });
 });
 
 /**
