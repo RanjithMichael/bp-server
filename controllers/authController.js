@@ -9,8 +9,8 @@ import sendResetEmail from "../utils/sendResetEmail.js";
 const setRefreshCookie = (res, token) => {
   res.cookie("refreshToken", token, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
+    secure: true,          // ensure HTTPS in production
+    sameSite: "none",      // allow cross-site requests if needed
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
@@ -45,7 +45,7 @@ export const registerUser = asyncHandler(async (req, res) => {
       role: user.role,
       isActive: user.isActive,
     },
-    accessToken, // ✅ flattened
+    accessToken,
   });
 });
 
@@ -81,7 +81,7 @@ export const loginUser = asyncHandler(async (req, res) => {
       role: user.role,
       isActive: user.isActive,
     },
-    accessToken, // ✅ flattened
+    accessToken,
   });
 });
 
@@ -107,7 +107,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     res.json({
       success: true,
       message: "Token refreshed successfully",
-      accessToken, // ✅ flattened
+      accessToken,
     });
   } catch (err) {
     console.error("Refresh error:", err.message);
@@ -126,7 +126,7 @@ export const getUserProfile = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: "Profile fetched successfully",
-    user, // ✅ flattened
+    user,
   });
 });
 
