@@ -98,6 +98,24 @@ export const loginUser = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Get user posts
+ */
+
+export const getUserPosts = asyncHandler(async (req, res) => {
+  const posts = await Post.find({
+    author: req.params.id,
+    isActive: true,
+    status: { $ne: "removed" },
+  })
+    .populate("author", "_id name profilePic")
+    .sort({ createdAt: -1 });
+
+  res.json({
+    success: true,
+    posts,
+  });
+});
+/**
  * @desc    Get current logged-in user's profile
  * @route   GET /api/users/profile
  * @access  Private
@@ -255,4 +273,4 @@ export const getUsers = asyncHandler(async (req, res) => {
     count: users.length,
     users,
   });
-});
+});2

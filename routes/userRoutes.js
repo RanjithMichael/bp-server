@@ -5,6 +5,7 @@ import multer from "multer";
 import {
   getMyPosts,
   updateUserProfile,
+  getUserPosts,
   getUserById,
   getUsers,
   getAuthorPage,
@@ -41,14 +42,17 @@ const upload = multer({
 
 // ROUTES
 
-// Public routes
+// Public
 router.get("/author/:username", getAuthorPage);
 
-// Protected routes
+// Protected
 router.get("/myposts", protect, getMyPosts);
 router.put("/profile", protect, upload.single("profilePic"), updateUserProfile);
 
-// Admin routes
+
+router.get("/:id/posts", protect, getUserPosts);
+
+// Admin
 router.get("/", protect, admin, getUsers);
 router.get("/:id", protect, admin, getUserById);
 
