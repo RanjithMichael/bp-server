@@ -92,15 +92,22 @@ export const getPostById = asyncHandler(async (req, res) => {
 export const getPostBySlug = asyncHandler(async (req, res) => {
   const { slug } = req.params;
 
-  const post = await Post.findOne({ slug, isActive: true, status: "published" })
+  const post = await Post.findOne({
+    slug,
+    isActive: true,
+    status: "published",
+  })
     .populate("author", "_id name profilePic")
     .populate("comments.user", "_id name profilePic");
 
   if (!post) {
-    return res.status(404).json({ success: false, message: "Post not found or removed" });
+    return res.status(404).json({ success: false, message: "Post not found" });
   }
+  post.analytics = post.analytics || {};
+  post.analytics.views = (post.analytics.views || 0) + 1;
 
-  //Filter out soft-deleted comments before sending
+  await post.save();
+
   const filteredPost = post.toObject();
   filteredPost.comments = filteredPost.comments.filter(c => !c.isDeleted);
 
@@ -120,6 +127,8 @@ export const toggleLikePost = asyncHandler(async (req, res) => {
   } else {
     post.likes.push(userId);
   }
+  post.analytics = post.analytics || {};
+  post.analytics.likesCount = post.likes.length;
   await post.save();
 
   const updatedPost = await Post.findById(req.params.id)
@@ -137,6 +146,8 @@ export const incrementSharePost = asyncHandler(async (req, res) => {
   }
 
   post.shares = (post.shares || 0) + 1;
+  post.analytics = post.analytics || {};
+  post.analytics.sharesCount = (post.analytics.sharesCount || 0) + 1;
   await post.save();
 
   res.json({ success: true, message: "Post shared", post });
@@ -155,6 +166,8 @@ export const addComment = asyncHandler(async (req, res) => {
   }
 
   post.comments.push({ user: req.user._id, text: text.trim() });
+  post.analytics = post.analytics || {};
+  post.analytics.commentsCount = post.comments.length;
   await post.save();
 
   const updatedPost = await Post.findById(req.params.id)
@@ -192,27 +205,26 @@ export const deleteComment = asyncHandler(async (req, res) => {
 });
 
 /** GET POST ANALYTICS */
-export const getPostAnalytics = asyncHandler(async (req, res) => {
-  const { postId } = req.params;
+export const getPostAnalytics = async (req, res) => {
+  const post = await Post.findById(req.params.id);
 
-  const post = await Post.findById(postId)
-    .populate("author", "_id name profilePic");
-
-  if (!post || !post.isActive || post.status === "removed") {
-    return res.status(404).json({ success: false, message: "Post not found or removed" });
+  if (!post) {
+    return res.status(404).json({ message: "Post not found" });
   }
 
-  //Use virtuals defined in schema
-  const analytics = {
-    likesCount: post.likesCount,
-    commentsCount: post.commentsCount, // filters out isDeleted automatically
-    sharesCount: post.sharesCount,
-    views: post.views,
+  // ✅ Always return analytics (even if empty)
+  const analytics = post.analytics || {
+    views: 0,
+    likesCount: post.likes?.length || 0,
+    sharesCount: post.shares || 0,
+    commentsCount: post.comments?.length || 0,
   };
 
-  res.json({ success: true, analytics });
-});
-
+  res.json({
+    success: true,
+    analytics,
+  });
+};
 
 /** GET USER POSTS */
 export const getUserPosts = asyncHandler(async (req, res) => {
