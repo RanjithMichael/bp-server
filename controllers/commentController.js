@@ -73,7 +73,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
 
   // Find the post
   const post = await Post.findById(postId);
-  if (!post || !post.isActive) {
+  if (!post) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
