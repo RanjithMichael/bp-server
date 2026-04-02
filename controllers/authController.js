@@ -135,7 +135,7 @@ export const updateUserProfile = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-      return res.status(404).json({ message: "WORKING " });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Update fields
