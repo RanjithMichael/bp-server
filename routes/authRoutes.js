@@ -3,6 +3,7 @@ import {
   registerUser,
   loginUser,
   getUserProfile,
+  updateUserProfile,
   deleteUser,
   refreshAccessToken,
   forgotPassword,
@@ -25,6 +26,7 @@ router.post("/refresh", refreshAccessToken);
 
 // Private routes
 router.get("/profile", protect, getUserProfile);
+router.put("/profile", protect, updateUserProfile);
 
 // Admin routes
 router.delete("/:id", protect, admin, deleteUser);

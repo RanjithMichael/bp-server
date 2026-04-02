@@ -129,6 +129,35 @@ export const getUserProfile = asyncHandler(async (req, res) => {
     user,
   });
 });
+/** UPDATE PROFILE */
+export const updateUserProfile = async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(404).json({ message: "WORKING " });
+    }
+
+    // Update fields
+    user.name = req.body.name || user.name;
+    user.email = req.body.email || user.email;
+
+    // Optional: password update
+    if (req.body.password) {
+      user.password = req.body.password;
+    }
+
+    const updatedUser = await user.save();
+
+    res.json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Update Profile Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 /** DELETE USER (Admin) */
 export const deleteUser = asyncHandler(async (req, res) => {
