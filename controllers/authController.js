@@ -28,7 +28,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: "User already exists" });
   }
 
-  const user = await User.create({ name, email: normalizedEmail, password });
+  const user = await User.create({ name, email: normalizedEmail, password, role: "author",});
 
   const accessToken = generateAccessToken(user._id, { email: user.email }, "15m");
   const refreshToken = generateRefreshToken(user._id, { email: user.email });
