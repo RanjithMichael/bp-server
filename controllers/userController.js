@@ -273,4 +273,4 @@ export const getUsers = asyncHandler(async (req, res) => {
     count: users.length,
     users,
   });
-});2
+});

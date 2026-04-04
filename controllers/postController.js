@@ -117,40 +117,66 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
 /** TOGGLE LIKE */
 export const toggleLikePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
+
   if (!post || !post.isActive) {
-    return res.status(404).json({ success: false, message: "Post not found or removed" });
+    return res.status(404).json({
+      success: false,
+      message: "Post not found or removed",
+    });
   }
 
   const userId = req.user._id.toString();
-  if (post.likes.includes(userId)) {
-    post.likes = post.likes.filter(id => id.toString() !== userId);
+
+  // ensure likes array exists
+  post.likes = post.likes || [];
+
+  // check if already liked
+  const alreadyLiked = post.likes.some(
+    (id) => id.toString() === userId
+  );
+
+  if (alreadyLiked) {
+    //UNLIKE
+    post.likes = post.likes.filter(
+      (id) => id.toString() !== userId
+    );
   } else {
+    //LIKE
     post.likes.push(userId);
   }
-  post.analytics = post.analytics || {};
-  post.analytics.likesCount = post.likes.length;
+
   await post.save();
 
-  const updatedPost = await Post.findById(req.params.id)
-    .populate("author", "_id name profilePic")
-    .populate("comments.user", "_id name profilePic");
-
-  res.json({ success: true, message: "Like toggled", post: updatedPost });
+  res.status(200).json({
+    success: true,
+    liked: !alreadyLiked,
+    likesCount: post.likes.length,
+  });
 });
 
 /** INCREMENT SHARE */
 export const incrementSharePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
+
   if (!post || !post.isActive) {
-    return res.status(404).json({ success: false, message: "Post not found or removed" });
+    return res.status(404).json({
+      success: false,
+      message: "Post not found or removed",
+    });
   }
 
-  post.shares = (post.shares || 0) + 1;
+  post.shareCount = (post.shareCount || 0) + 1;
+
   post.analytics = post.analytics || {};
   post.analytics.sharesCount = (post.analytics.sharesCount || 0) + 1;
+
   await post.save();
 
-  res.json({ success: true, message: "Post shared", post });
+  res.status(200).json({
+    success: true,
+    message: "Post shared successfully",
+    shareCount: post.shareCount,
+  });
 });
 
 /** ADD COMMENT */
@@ -212,7 +238,7 @@ export const getPostAnalytics = async (req, res) => {
     return res.status(404).json({ message: "Post not found" });
   }
 
-  // ✅ Always return analytics (even if empty)
+  //Always return analytics (even if empty)
   const analytics = post.analytics || {
     views: 0,
     likesCount: post.likes?.length || 0,

@@ -28,7 +28,7 @@ const postSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     views: { type: Number, default: 0, min: 0 },
     shares: { type: Number, default: 0, min: 0 },
-    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", index: true, default: [] }],
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", }],
     comments: [commentSchema],
   },
   { timestamps: true }
