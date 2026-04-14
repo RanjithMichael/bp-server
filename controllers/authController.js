@@ -7,12 +7,12 @@ import sendResetEmail from "../utils/sendResetEmail.js";
 
 // Helper: set refresh cookie
 const setRefreshCookie = (res, token) => {
-  res.cookie("refreshToken", token, {
-    httpOnly: true,
-    secure: true,          // ensure HTTPS in production
-    sameSite: "none",      // allow cross-site requests if needed
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  });
+res.cookie("refreshToken", refreshToken, {
+  httpOnly: true,
+  secure: true,        // ⚠️ required on Render (HTTPS)
+  sameSite: "None",    // ⚠️ required for frontend-backend different domains
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
 };
 
 /** REGISTER */
@@ -66,8 +66,10 @@ export const loginUser = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: "Account is deactivated. Contact admin." });
   }
 
-  const accessToken = generateAccessToken(user._id, { email: user.email }, "15m");
-  const refreshToken = generateRefreshToken(user._id, { email: user.email });
+  const accessToken = generateAccessToken(
+  { id: user._id, email: user.email },
+  "15m"
+);
 
   setRefreshCookie(res, refreshToken);
 
