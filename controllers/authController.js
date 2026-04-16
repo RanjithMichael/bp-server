@@ -8,17 +8,28 @@ import {
 } from "../utils/generateToken.js";
 import sendResetEmail from "../utils/sendResetEmail.js";
 
-//Helper: set refresh cookie
+//HELPER 
 const setRefreshCookie = (res, token) => {
   res.cookie("refreshToken", token, {
     httpOnly: true,
-    secure: true, // required for HTTPS (Render)
-    sameSite: "None", // required for cross-origin
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    secure: true,
+    sameSite: "None",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
 
+//TOKEN CREATOR
+const createTokens = (user) => {
+  const payload = {
+    id: user._id.toString(),
+    email: user.email,
+  };
 
+  const accessToken = generateAccessToken(payload, "15m");
+  const refreshToken = generateRefreshToken(payload);
+
+  return { accessToken, refreshToken };
+};
 
 //REGISTER
 export const registerUser = asyncHandler(async (req, res) => {
@@ -48,16 +59,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     role: "author",
   });
 
-  //Correct token format
-  const accessToken = generateAccessToken(
-    { id: user._id, email: user.email },
-    "15m"
-  );
-
-  const refreshToken = generateRefreshToken({
-    id: user._id,
-    email: user.email,
-  });
+  const { accessToken, refreshToken } = createTokens(user);
 
   setRefreshCookie(res, refreshToken);
 
@@ -75,9 +77,7 @@ export const registerUser = asyncHandler(async (req, res) => {
   });
 });
 
-
-
-//LOGIN 
+//LOGIN
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -106,16 +106,7 @@ export const loginUser = asyncHandler(async (req, res) => {
     });
   }
 
-  //Correct token format
-  const accessToken = generateAccessToken(
-    { id: user._id, email: user.email },
-    "15m"
-  );
-
-  const refreshToken = generateRefreshToken({
-    id: user._id,
-    email: user.email,
-  });
+  const { accessToken, refreshToken } = createTokens(user);
 
   setRefreshCookie(res, refreshToken);
 
@@ -133,9 +124,7 @@ export const loginUser = asyncHandler(async (req, res) => {
   });
 });
 
-
-
-//REFRESH
+//REFRESH 
 export const refreshAccessToken = asyncHandler(async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
 
@@ -161,15 +150,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
       });
     }
 
-    const accessToken = generateAccessToken(
-      { id: user._id, email: user.email },
-      "15m"
-    );
-
-    const newRefreshToken = generateRefreshToken({
-      id: user._id,
-      email: user.email,
-    });
+    const { accessToken, refreshToken: newRefreshToken } = createTokens(user);
 
     setRefreshCookie(res, newRefreshToken);
 
@@ -189,8 +170,6 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     });
   }
 });
-
-
 
 //PROFILE
 export const getUserProfile = asyncHandler(async (req, res) => {
@@ -233,9 +212,7 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
-
-
-//DELETE USER
+//DELETE USER 
 export const deleteUser = asyncHandler(async (req, res) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({
@@ -261,8 +238,6 @@ export const deleteUser = asyncHandler(async (req, res) => {
     message: "User deactivated successfully",
   });
 });
-
-
 
 //FORGOT PASSWORD
 export const forgotPassword = asyncHandler(async (req, res) => {

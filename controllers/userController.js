@@ -2,26 +2,44 @@ import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
 import Post from "../models/Post.js";
 import Subscription from "../models/Subscription.js";
-import { generateTokens } from "../utils/generateToken.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../utils/generateToken.js";
 import { sendEmail } from "../utils/sendEmail.js";
 
-/**
- * @desc    Register a new user
- * @route   POST /api/users/register
- * @access  Public
- */
+//HELPER
+const createTokens = (user) => {
+  const payload = {
+    id: user._id.toString(),
+    email: user.email,
+  };
+
+  const accessToken = generateAccessToken(payload, "15m");
+  const refreshToken = generateRefreshToken(payload);
+
+  return { accessToken, refreshToken };
+};
+
+//REGISTER
 export const registerUser = asyncHandler(async (req, res) => {
   const { name, username, email, password } = req.body;
 
   const userExists = await User.findOne({ email });
   if (userExists) {
-    return res.status(400).json({ success: false, message: "User already exists" });
+    return res.status(400).json({
+      success: false,
+      message: "User already exists",
+    });
   }
 
   const user = await User.create({ name, username, email, password });
 
   if (!user) {
-    return res.status(400).json({ success: false, message: "Invalid user data" });
+    return res.status(400).json({
+      success: false,
+      message: "Invalid user data",
+    });
   }
 
   // Send welcome email (non-blocking)
@@ -39,10 +57,8 @@ export const registerUser = asyncHandler(async (req, res) => {
     console.error("Email error:", err.message);
   }
 
-  // Generate tokens
-  const { accessToken, refreshToken } = generateTokens(user._id);
+  const { accessToken, refreshToken } = createTokens(user);
 
-  // Send refresh token in HttpOnly cookie
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -62,21 +78,20 @@ export const registerUser = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Login user & get token
- * @route   POST /api/users/login
- * @access  Public
- */
+//LOGIN 
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email }).select("+password");
 
   if (!user || !(await user.matchPassword(password))) {
-    return res.status(401).json({ success: false, message: "Invalid email or password" });
+    return res.status(401).json({
+      success: false,
+      message: "Invalid email or password",
+    });
   }
 
-  const { accessToken, refreshToken } = generateTokens(user._id);
+  const { accessToken, refreshToken } = createTokens(user);
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
@@ -97,10 +112,7 @@ export const loginUser = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Get user posts
- */
-
+//GET USER POSTS 
 export const getUserPosts = asyncHandler(async (req, res) => {
   const posts = await Post.find({
     author: req.params.id,
@@ -115,16 +127,16 @@ export const getUserPosts = asyncHandler(async (req, res) => {
     posts,
   });
 });
-/**
- * @desc    Get current logged-in user's profile
- * @route   GET /api/users/profile
- * @access  Private
- */
+
+//PROFILE
 export const getUserProfile = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id).select("-password");
+  const user = await User.findById(req.user.id).select("-password");
 
   if (!user) {
-    return res.status(404).json({ success: false, message: "User not found" });
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
   }
 
   res.json({
@@ -142,14 +154,10 @@ export const getUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Get current logged-in user's posts
- * @route   GET /api/users/myposts
- * @access  Private
- */
+//MY POSTS
 export const getMyPosts = asyncHandler(async (req, res) => {
   const posts = await Post.find({
-    author: req.user._id,
+    author: req.user.id,
     isDeleted: { $ne: true },
   })
     .sort({ createdAt: -1 })
@@ -162,21 +170,24 @@ export const getMyPosts = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Update current user's profile
- * @route   PUT /api/users/profile
- * @access  Private
- */
+//UPDATE PROFILE 
 export const updateUserProfile = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user.id);
 
   if (!user) {
-    return res.status(404).json({ success: false, message: "User not found" });
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
   }
 
   user.name = req.body.name ?? user.name;
   user.email = req.body.email ?? user.email;
-  if (req.body.password) user.password = req.body.password;
+
+  if (req.body.password) {
+    user.password = req.body.password;
+  }
+
   if (req.body.bio !== undefined) user.bio = req.body.bio;
   if (req.body.socialLinks !== undefined) user.socialLinks = req.body.socialLinks;
 
@@ -201,20 +212,21 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Get user by ID (admin dashboard)
- * @route   GET /api/users/:id
- * @access  Private/Admin
- */
+//GET USER BY ID
 export const getUserById = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id).select("-password");
 
   if (!user) {
-    return res.status(404).json({ success: false, message: "User not found" });
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
   }
 
-  const posts = await Post.find({ author: user._id, isDeleted: { $ne: true } })
-    .sort({ createdAt: -1 });
+  const posts = await Post.find({
+    author: user._id,
+    isDeleted: { $ne: true },
+  }).sort({ createdAt: -1 });
 
   const subscriptions = await Subscription.find({ user: user._id })
     .populate("author", "name username email profilePic");
@@ -227,16 +239,15 @@ export const getUserById = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Public Author Page (visible without login)
- * @route   GET /api/users/author/:username
- * @access  Public
- */
+//AUTHOR PAGE
 export const getAuthorPage = asyncHandler(async (req, res) => {
   const user = await User.findOne({ username: req.params.username }).select("-password");
 
   if (!user) {
-    return res.status(404).json({ success: false, message: "Author not found" });
+    return res.status(404).json({
+      success: false,
+      message: "Author not found",
+    });
   }
 
   const posts = await Post.find({
@@ -260,11 +271,7 @@ export const getAuthorPage = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * @desc    Get all users (admin only)
- * @route   GET /api/users
- * @access  Private/Admin
- */
+//GET ALL USERS
 export const getUsers = asyncHandler(async (req, res) => {
   const users = await User.find({}).select("-password");
 
