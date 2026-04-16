@@ -264,7 +264,7 @@ export const deleteUser = asyncHandler(async (req, res) => {
 
 
 
-// ================= FORGOT PASSWORD =================
+//FORGOT PASSWORD
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
