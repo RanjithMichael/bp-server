@@ -297,7 +297,7 @@ export const updatePost = asyncHandler(async (req, res) => {
 export const deletePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
-  if (!post || !post.isActive) {
+  if (!post || post.isDeleted || post.status === "removed") { 
     return res
       .status(404)
       .json({ success: false, message: "Post not found or already removed" });

@@ -71,35 +71,43 @@ export const getCommentsByPost = asyncHandler(async (req, res) => {
 export const deleteComment = asyncHandler(async (req, res) => {
   const { postId, commentId } = req.params;
 
-  // Find the post
   const post = await Post.findById(postId);
-  if (!post) {
-    return res.status(404).json({ success: false, message: "Post not found or removed" });
+
+  if (!post || post.isDeleted) {
+    return res.status(404).json({
+      success: false,
+      message: "Post not found",
+    });
   }
 
-  // Find the comment inside the post
   const comment = post.comments.id(commentId);
+
   if (!comment) {
-    return res.status(404).json({ success: false, message: "Comment not found" });
+    return res.status(404).json({
+      success: false,
+      message: "Comment not found",
+    });
   }
 
-  // Authorization check
-  if (comment.user.toString() !== req.user._id.toString() && req.user.role !== "admin") {
-    return res.status(403).json({ success: false, message: "Not authorized to delete this comment" });
+  // permission check
+  if (
+    comment.user.toString() !== req.user.id &&
+    req.user.role !== "admin"
+  ) {
+    return res.status(403).json({
+      success: false,
+      message: "Not authorized to delete this comment",
+    });
   }
 
-  //Soft delete
+  // soft delete
   comment.isDeleted = true;
-  await post.save();
 
-  // Return updated post with populated author and comments
-  const updatedPost = await Post.findById(postId)
-    .populate("author", "_id name profilePic")
-    .populate("comments.user", "_id name profilePic");
+  await post.save();
 
   res.json({
     success: true,
-    message: "Comment deleted successfully (soft delete)",
-    post: updatedPost,
+    message: "Comment deleted",
+    post,
   });
 });
