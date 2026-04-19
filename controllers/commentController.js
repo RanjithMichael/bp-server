@@ -69,14 +69,16 @@ export const getCommentsByPost = asyncHandler(async (req, res) => {
  * @access  Private (author or admin)
  */
 export const deleteComment = asyncHandler(async (req, res) => {
-  const { postId, commentId } = req.params;
+  const { commentId } = req.params;
 
-  const post = await Post.findById(postId);
+  const post = await Post.findOne({
+    "comments._id": commentId,
+  });
 
   if (!post || post.isDeleted) {
     return res.status(404).json({
       success: false,
-      message: "Post not found",
+      message: "Post not found or removed",
     });
   }
 
@@ -89,25 +91,23 @@ export const deleteComment = asyncHandler(async (req, res) => {
     });
   }
 
-  // permission check
   if (
     comment.user.toString() !== req.user.id &&
     req.user.role !== "admin"
   ) {
     return res.status(403).json({
       success: false,
-      message: "Not authorized to delete this comment",
+      message: "Not authorized",
     });
   }
 
-  // soft delete
   comment.isDeleted = true;
 
   await post.save();
 
   res.json({
     success: true,
-    message: "Comment deleted",
+    message: "Comment deleted successfully",
     post,
   });
 });

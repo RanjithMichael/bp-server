@@ -8,16 +8,16 @@ import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Routes for comments on a post
-router.route("/:postId")
-  .post(protect, addComment)   // POST /api/comments/:postId → add comment
-  .get(getCommentsByPost);     // GET /api/comments/:postId → get comments
+//DELETE FIRST
+router.delete("/:commentId", protect, deleteComment);
 
-// Route for deleting a comment by ID
- router.route("/:postId/comments/:commentId")
-  .delete(protect, deleteComment); // DELETE /api/comments/:postId/comments/:commentId → delete comment
+//Then POST & GET
+router
+  .route("/:postId")
+  .post(protect, addComment)
+  .get(getCommentsByPost);
+
 export default router;
-
 
 
 
