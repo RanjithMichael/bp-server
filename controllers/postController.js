@@ -119,7 +119,7 @@ export const toggleLikePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
   if (!post || !post.isActive) {
-    return res.status(404).json({
+     return res.status(404).json({
       success: false,
       message: "Post not found or removed",
     });
@@ -149,8 +149,7 @@ export const toggleLikePost = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    liked: !alreadyLiked,
-    likesCount: post.likes.length,
+    post,
   });
 });
 
