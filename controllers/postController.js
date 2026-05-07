@@ -9,7 +9,7 @@ export const createPost = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: "Title and content are required" });
   }
   if (!req.user?._id) {
-    return res.status(401).json({ success: false, message: "Unauthorized: No user found" });
+    return res.status(401).json({ success: false, message: "Unauthorized: Token invalid or missing" });
   }
 
   const post = await Post.create({
@@ -17,10 +17,11 @@ export const createPost = asyncHandler(async (req, res) => {
     content,
     categories: categories || [],
     tags: tags || [],
-    coverImage: coverImage || "",
+    coverImage: coverImage || "https://via.placeholder.com/600x400?text=No+Image", // fallback
     author: req.user._id,
     status: "published",
     isActive: true,
+    analytics: { views: 0, sharesCount: 0, commentsCount: 0 },
   });
 
   const populatedPost = await Post.findById(post._id)
@@ -29,7 +30,7 @@ export const createPost = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: "Post created successfully",
-    post: populatedPost, //flattened
+    post: populatedPost,
   });
 });
 
@@ -81,7 +82,6 @@ export const getPostById = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
-  //Filter out soft-deleted comments before sending
   const filteredPost = post.toObject();
   filteredPost.comments = filteredPost.comments.filter(c => !c.isDeleted);
 
@@ -92,20 +92,16 @@ export const getPostById = asyncHandler(async (req, res) => {
 export const getPostBySlug = asyncHandler(async (req, res) => {
   const { slug } = req.params;
 
-  const post = await Post.findOne({
-    slug,
-    isActive: true,
-    status: "published",
-  })
+  const post = await Post.findOne({ slug, isActive: true, status: "published" })
     .populate("author", "_id name profilePic")
     .populate("comments.user", "_id name profilePic");
 
   if (!post) {
     return res.status(404).json({ success: false, message: "Post not found" });
   }
+
   post.analytics = post.analytics || {};
   post.analytics.views = (post.analytics.views || 0) + 1;
-
   await post.save();
 
   const filteredPost = post.toObject();
@@ -117,57 +113,42 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
 /** TOGGLE LIKE */
 export const toggleLikePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
-
   if (!post || !post.isActive) {
-     return res.status(404).json({
-      success: false,
-      message: "Post not found or removed",
-    });
+    return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
   const userId = req.user._id.toString();
-
-  // ensure likes array exists
   post.likes = post.likes || [];
 
-  // check if already liked
-  const alreadyLiked = post.likes.some(
-    (id) => id.toString() === userId
-  );
-
+  const alreadyLiked = post.likes.some(id => id.toString() === userId);
   if (alreadyLiked) {
-    //UNLIKE
-    post.likes = post.likes.filter(
-      (id) => id.toString() !== userId
-    );
+    post.likes = post.likes.filter(id => id.toString() !== userId);
   } else {
-    //LIKE
     post.likes.push(userId);
   }
+
+  post.analytics = post.analytics || {};
+  post.analytics.likesCount = post.likes.length;
 
   await post.save();
 
   res.status(200).json({
     success: true,
-    post,
+    likesCount: post.likes.length,
+    postId: post._id,
   });
 });
 
 /** INCREMENT SHARE */
 export const incrementSharePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
-
   if (!post || !post.isActive) {
-    return res.status(404).json({
-      success: false,
-      message: "Post not found or removed",
-    });
+    return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
   post.shareCount = (post.shareCount || 0) + 1;
-
   post.analytics = post.analytics || {};
-  post.analytics.sharesCount = (post.analytics.sharesCount || 0) + 1;
+  post.analytics.sharesCount = post.shareCount;
 
   await post.save();
 
@@ -220,6 +201,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
   }
 
   comment.remove();
+  post.analytics.commentsCount = post.comments.length - 1;
   await post.save();
 
   const updatedPost = await Post.findById(postId)
@@ -230,30 +212,29 @@ export const deleteComment = asyncHandler(async (req, res) => {
 });
 
 /** GET POST ANALYTICS */
-export const getPostAnalytics = async (req, res) => {
+export const getPostAnalytics = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
-
   if (!post) {
     return res.status(404).json({ message: "Post not found" });
   }
 
-  //Always return analytics (even if empty)
-  const analytics = post.analytics || {
-    views: 0,
+  const analytics = {
+    views: post.analytics?.views || 0,
     likesCount: post.likes?.length || 0,
-    sharesCount: post.shares || 0,
+    sharesCount: post.shareCount || 0,
     commentsCount: post.comments?.length || 0,
   };
 
-  res.json({
-    success: true,
-    analytics,
-  });
-};
+  res.json({ success: true, analytics });
+});
 
 /** GET USER POSTS */
 export const getUserPosts = asyncHandler(async (req, res) => {
-  const posts = await Post.find({ author: req.params.id, status: { $ne: "removed" }, isActive: true })
+  const posts = await Post.find({
+    author: req.params.id,
+    status: { $ne: "removed" },
+    isActive: true,
+  })
     .populate("author", "_id name profilePic")
     .sort({ createdAt: -1 });
 
@@ -268,6 +249,7 @@ export const updatePost = asyncHandler(async (req, res) => {
   if (!post || !post.isActive) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
+
   if (post.author.toString() !== req.user._id.toString() && req.user.role !== "admin") {
     return res.status(403).json({ success: false, message: "Not authorized to update this post" });
   }
@@ -288,31 +270,18 @@ export const updatePost = asyncHandler(async (req, res) => {
   res.json({ success: true, message: "Post updated successfully", post: updatedPost });
 });
 
-/**
- * @desc    Delete a post (soft delete)
- * @route   DELETE /api/posts/:id
- * @access  Private/Author/Admin
- */
+/** DELETE POST (soft delete) */
 export const deletePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
-  if (!post || post.isDeleted || post.status === "removed") { 
-    return res
-      .status(404)
-      .json({ success: false, message: "Post not found or already removed" });
+  if (!post || post.isDeleted || post.status === "removed") {
+    return res.status(404).json({ success: false, message: "Post not found or already removed" });
   }
 
-  // Only author or admin can delete
-  if (
-    post.author.toString() !== req.user._id.toString() &&
-    req.user.role !== "admin"
-  ) {
-    return res
-      .status(403)
-      .json({ success: false, message: "Not authorized to delete this post" });
+  if (post.author.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+    return res.status(403).json({ success: false, message: "Not authorized to delete this post" });
   }
 
-  // Soft delete
   post.isActive = false;
   post.status = "removed";
   await post.save();

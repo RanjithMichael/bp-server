@@ -17,19 +17,39 @@ const commentSchema = new mongoose.Schema(
 
 const postSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true, trim: true, minlength: 3, maxlength: 150 },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 150,
+    },
     slug: { type: String, unique: true, index: true },
     content: { type: String, required: true, minlength: 20 },
-    coverImage: { type: String, default: "" },
+    coverImage: {
+      type: String,
+      default: "https://via.placeholder.com/600x400?text=No+Image", // fallback image
+    },
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     categories: { type: [String], default: [] },
     tags: { type: [String], default: [] },
-    status: { type: String, enum: ["draft", "published", "removed"], default: "published", index: true },
+    status: {
+      type: String,
+      enum: ["draft", "published", "removed"],
+      default: "published",
+      index: true,
+    },
     isActive: { type: Boolean, default: true },
     views: { type: Number, default: 0, min: 0 },
     shares: { type: Number, default: 0, min: 0 },
-    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", }],
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     comments: [commentSchema],
+    analytics: {
+      views: { type: Number, default: 0 },
+      likesCount: { type: Number, default: 0 },
+      sharesCount: { type: Number, default: 0 },
+      commentsCount: { type: Number, default: 0 },
+    },
   },
   { timestamps: true }
 );
@@ -69,6 +89,7 @@ postSchema.statics.toggleLike = async function (postId, userId) {
   post.likes = alreadyLiked
     ? post.likes.filter((id) => id.toString() !== userId.toString())
     : [...post.likes, userId];
+  post.analytics.likesCount = post.likes.length;
   await post.save();
   return post;
 };
@@ -77,6 +98,7 @@ postSchema.statics.incrementShare = async function (postId) {
   const post = await this.findById(postId);
   if (!post) return null;
   post.shares = (post.shares || 0) + 1;
+  post.analytics.sharesCount = post.shares;
   await post.save();
   return post;
 };
@@ -87,6 +109,7 @@ postSchema.statics.softDeleteComment = async function (postId, commentId) {
   const comment = post.comments.id(commentId);
   if (!comment) return null;
   comment.isDeleted = true;
+  post.analytics.commentsCount = post.comments.filter((c) => !c.isDeleted).length;
   await post.save();
   return comment;
 };
@@ -95,6 +118,7 @@ postSchema.statics.hardDeleteComment = async function (postId, commentId) {
   const post = await this.findById(postId);
   if (!post) return null;
   post.comments = post.comments.filter((c) => c._id.toString() !== commentId.toString());
+  post.analytics.commentsCount = post.comments.filter((c) => !c.isDeleted).length;
   await post.save();
   return true;
 };
