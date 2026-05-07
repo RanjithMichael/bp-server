@@ -123,6 +123,17 @@ export const loginUser = asyncHandler(async (req, res) => {
     accessToken,
   });
 });
+// Logout user - clears refresh cookie
+export const logoutUser = (req, res) => {
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+
+  return res.status(200).json({ message: "Logged out successfully" });
+};
+
 
 //REFRESH 
 export const refreshAccessToken = asyncHandler(async (req, res) => {

@@ -2,6 +2,7 @@ import express from "express";
 import {
   registerUser,
   loginUser,
+  logoutUser,
   getUserProfile,
   updateUserProfile,
   deleteUser,
@@ -15,13 +16,14 @@ const router = express.Router();
 // Public routes
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.post("/logout", logoutUser);
 
 
 // Forgot password route
 router.post("/forgot-password", forgotPassword);
 
 
-// Refresh token route (✅ changed to POST to match frontend)
+// Refresh token route 
 router.post("/refresh", refreshAccessToken);
 
 // Private routes
