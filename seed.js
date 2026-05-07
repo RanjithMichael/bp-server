@@ -1,7 +1,7 @@
 // seed.js
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import Post from "./models/Post.js"; // adjust path if needed
+import Post from "./models/Post.js";
 
 dotenv.config();
 
