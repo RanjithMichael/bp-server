@@ -33,9 +33,12 @@ router.post("/", protect, upload.single("image"), (req, res) => {
     return res.status(400).json({ success: false, error: "No file uploaded" });
   }
 
+  // Build full URL dynamically
+  const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
   res.status(201).json({
     success: true,
-    imageUrl: `/uploads/${req.file.filename}`,
+    imageUrl,
   });
 });
 

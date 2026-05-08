@@ -3,25 +3,39 @@ import Post from "../models/Post.js";
 
 /** CREATE POST */
 export const createPost = asyncHandler(async (req, res) => {
-  const { title, content, categories, tags, coverImage } = req.body;
+  // Multer will attach file info if an image was uploaded
+  const { title, content } = req.body;
+  const categories = req.body["categories[]"] || req.body.categories || [];
+  const tags = req.body["tags[]"] || req.body.tags || [];
 
-  if (!title || !content) {
-    return res.status(400).json({ success: false, message: "Title and content are required" });
+  if (!title || title.trim().length < 5) {
+    return res.status(400).json({ success: false, message: "Title must be at least 5 characters" });
+  }
+  if (!content || content.trim().length < 20) {
+    return res.status(400).json({ success: false, message: "Content must be at least 20 characters" });
   }
   if (!req.user?._id) {
     return res.status(401).json({ success: false, message: "Unauthorized: Token invalid or missing" });
   }
 
+  // ✅ Handle image: either uploaded file or fallback
+  let coverImage;
+  if (req.file) {
+    coverImage = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+  } else {
+    coverImage = "https://via.placeholder.com/600x400?text=No+Image";
+  }
+
   const post = await Post.create({
     title,
     content,
-    categories: categories || [],
-    tags: tags || [],
-    coverImage: coverImage || "https://via.placeholder.com/600x400?text=No+Image", // fallback
+    categories: Array.isArray(categories) ? categories : [categories],
+    tags: Array.isArray(tags) ? tags : [tags],
+    coverImage,
     author: req.user._id,
     status: "published",
     isActive: true,
-    analytics: { views: 0, sharesCount: 0, commentsCount: 0 },
+    analytics: { views: 0, sharesCount: 0, commentsCount: 0, likesCount: 0 },
   });
 
   const populatedPost = await Post.findById(post._id)
