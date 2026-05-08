@@ -3,7 +3,6 @@ import Post from "../models/Post.js";
 
 /** CREATE POST */
 export const createPost = asyncHandler(async (req, res) => {
-  // Multer will attach file info if an image was uploaded
   const { title, content } = req.body;
   const categories = req.body["categories[]"] || req.body.categories || [];
   const tags = req.body["tags[]"] || req.body.tags || [];
@@ -39,7 +38,7 @@ export const createPost = asyncHandler(async (req, res) => {
   });
 
   const populatedPost = await Post.findById(post._id)
-    .populate("author", "_id name email profilePic");
+    .populate("author", "_id name username profilePic");
 
   res.status(201).json({
     success: true,
@@ -71,7 +70,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("author", "_id name profilePic"),
+      .populate("author", "_id name username profilePic"),
     Post.countDocuments(filter),
   ]);
 
@@ -89,8 +88,8 @@ export const getPostById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const post = await Post.findById(id)
-    .populate("author", "_id name profilePic")
-    .populate("comments.user", "_id name profilePic");
+    .populate("author", "_id name username profilePic")
+    .populate("comments.user", "_id name username profilePic");
 
   if (!post || !post.isActive || post.status === "removed") {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
@@ -107,8 +106,8 @@ export const getPostBySlug = asyncHandler(async (req, res) => {
   const { slug } = req.params;
 
   const post = await Post.findOne({ slug, isActive: true, status: "published" })
-    .populate("author", "_id name profilePic")
-    .populate("comments.user", "_id name profilePic");
+    .populate("author", "_id name username profilePic")
+    .populate("comments.user", "_id name username profilePic");
 
   if (!post) {
     return res.status(404).json({ success: false, message: "Post not found" });
@@ -149,6 +148,7 @@ export const toggleLikePost = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     likesCount: post.likes.length,
+    liked: !alreadyLiked, // ✅ return liked state
     postId: post._id,
   });
 });
@@ -160,16 +160,15 @@ export const incrementSharePost = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
 
-  post.shareCount = (post.shareCount || 0) + 1;
   post.analytics = post.analytics || {};
-  post.analytics.sharesCount = post.shareCount;
+  post.analytics.sharesCount = (post.analytics.sharesCount || 0) + 1;
 
   await post.save();
 
   res.status(200).json({
     success: true,
     message: "Post shared successfully",
-    shareCount: post.shareCount,
+    sharesCount: post.analytics.sharesCount,
   });
 });
 
@@ -187,12 +186,12 @@ export const addComment = asyncHandler(async (req, res) => {
 
   post.comments.push({ user: req.user._id, text: text.trim() });
   post.analytics = post.analytics || {};
-  post.analytics.commentsCount = post.comments.length;
+  post.analytics.commentsCount = post.comments.filter(c => !c.isDeleted).length;
   await post.save();
 
   const updatedPost = await Post.findById(req.params.id)
-    .populate("author", "_id name profilePic")
-    .populate("comments.user", "_id name profilePic");
+    .populate("author", "_id name username profilePic")
+    .populate("comments.user", "_id name username profilePic");
 
   res.status(201).json({ success: true, message: "Comment added", post: updatedPost });
 });
@@ -215,12 +214,12 @@ export const deleteComment = asyncHandler(async (req, res) => {
   }
 
   comment.remove();
-  post.analytics.commentsCount = post.comments.length - 1;
+  post.analytics.commentsCount = post.comments.filter(c => !c.isDeleted).length;
   await post.save();
 
   const updatedPost = await Post.findById(postId)
-    .populate("author", "_id name profilePic")
-    .populate("comments.user", "_id name profilePic");
+    .populate("author", "_id name username profilePic")
+    .populate("comments.user", "_id name username profilePic");
 
   res.json({ success: true, message: "Comment deleted successfully", post: updatedPost });
 });
@@ -235,12 +234,13 @@ export const getPostAnalytics = asyncHandler(async (req, res) => {
   const analytics = {
     views: post.analytics?.views || 0,
     likesCount: post.likes?.length || 0,
-    sharesCount: post.shareCount || 0,
-    commentsCount: post.comments?.length || 0,
+    sharesCount: post.analytics?.sharesCount || 0,
+    commentsCount: post.comments?.filter(c => !c.isDeleted).length || 0,
   };
 
   res.json({ success: true, analytics });
 });
+
 
 /** GET USER POSTS */
 export const getUserPosts = asyncHandler(async (req, res) => {
@@ -249,7 +249,7 @@ export const getUserPosts = asyncHandler(async (req, res) => {
     status: { $ne: "removed" },
     isActive: true,
   })
-    .populate("author", "_id name profilePic")
+    .populate("author", "_id name username profilePic")
     .sort({ createdAt: -1 });
 
   res.json({ success: true, posts });
@@ -257,7 +257,7 @@ export const getUserPosts = asyncHandler(async (req, res) => {
 
 /** UPDATE POST */
 export const updatePost = asyncHandler(async (req, res) => {
-  const { title, content, categories, tags, coverImage, status } = req.body;
+  const { title, content, categories, tags, status } = req.body;
   const post = await Post.findById(req.params.id);
 
   if (!post || !post.isActive) {
@@ -268,18 +268,23 @@ export const updatePost = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: "Not authorized to update this post" });
   }
 
+  // ✅ Update fields
   post.title = title || post.title;
   post.content = content || post.content;
   post.categories = categories || post.categories;
   post.tags = tags || post.tags;
-  post.coverImage = coverImage || post.coverImage;
   post.status = status || post.status;
+
+  // ✅ Handle image replacement if new file uploaded
+  if (req.file) {
+    post.coverImage = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+  }
 
   await post.save();
 
   const updatedPost = await Post.findById(post._id)
-    .populate("author", "_id name profilePic")
-    .populate("comments.user", "_id name profilePic");
+    .populate("author", "_id name username profilePic")
+    .populate("comments.user", "_id name username profilePic");
 
   res.json({ success: true, message: "Post updated successfully", post: updatedPost });
 });
