@@ -9,7 +9,7 @@ const users = [
   {
     name: "Ranjith B",
     username: "ranjith",
-    email: "ranjith@example.com",
+    email: "ranjithmichael49@gmail.com",
     password: "password123", // will be hashed if your User model has pre-save middleware
     role: "author",
   },
