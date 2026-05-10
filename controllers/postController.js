@@ -54,6 +54,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
   const search = req.query.search?.trim() || "";
 
+  // Filter only published + active posts
   const filter = {
     status: "published",
     isActive: true,
@@ -61,6 +62,8 @@ export const getAllPosts = asyncHandler(async (req, res) => {
       $or: [
         { title: { $regex: search, $options: "i" } },
         { content: { $regex: search, $options: "i" } },
+        { categories: { $regex: search, $options: "i" } },
+        { tags: { $regex: search, $options: "i" } },
       ],
     }),
   };
@@ -74,14 +77,18 @@ export const getAllPosts = asyncHandler(async (req, res) => {
     Post.countDocuments(filter),
   ]);
 
-  res.json({
+  res.status(200).json({
     success: true,
     posts,
-    currentPage: page,
-    totalPages: Math.ceil(totalPosts / limit),
-    totalPosts,
+    pagination: {
+      currentPage: page,
+      totalPages: Math.ceil(totalPosts / limit),
+      totalPosts,
+      limit,
+    },
   });
 });
+
 
 /** GET SINGLE POST BY ID */
 export const getPostById = asyncHandler(async (req, res) => {
