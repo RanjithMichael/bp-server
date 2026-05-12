@@ -25,12 +25,12 @@ export const createPost = asyncHandler(async (req, res) => {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "blogplatform_uploads",
       });
-      coverImage = result.secure_url; // Cloudinary CDN URL
+      post.coverImage = result.secure_url; // Cloudinary CDN URL
     } catch (err) {
       return res.status(500).json({ success: false, message: "Image upload failed", error: err.message });
     }
   } else {
-    coverImage = "https://via.placeholder.com/600x400?text=No+Image";
+    post.coverImage = "https://via.placeholder.com/600x400?text=No+Image";
   }
 
   const post = await Post.create({
