@@ -1,5 +1,6 @@
 import asyncHandler from "express-async-handler";
 import Post from "../models/Post.js";
+import { v2 as cloudinary } from "cloudinary";
 
 /** CREATE POST */
 export const createPost = asyncHandler(async (req, res) => {
@@ -17,10 +18,17 @@ export const createPost = asyncHandler(async (req, res) => {
     return res.status(401).json({ success: false, message: "Unauthorized: Token invalid or missing" });
   }
 
-  // ✅ Handle image: either uploaded file or fallback
+  // ✅ Handle image upload to Cloudinary
   let coverImage;
   if (req.file) {
-    coverImage = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    try {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "blogplatform_uploads",
+      });
+      coverImage = result.secure_url; // Cloudinary CDN URL
+    } catch (err) {
+      return res.status(500).json({ success: false, message: "Image upload failed", error: err.message });
+    }
   } else {
     coverImage = "https://via.placeholder.com/600x400?text=No+Image";
   }
@@ -47,6 +55,7 @@ export const createPost = asyncHandler(async (req, res) => {
   });
 });
 
+
 /** GET ALL POSTS (paginated + search) */
 export const getAllPosts = asyncHandler(async (req, res) => {
   const page = Number(req.query.page) || 1;
@@ -54,7 +63,6 @@ export const getAllPosts = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
   const search = req.query.search?.trim() || "";
 
-  // Filter only published + active posts
   const filter = {
     status: "published",
     isActive: true,
@@ -88,7 +96,6 @@ export const getAllPosts = asyncHandler(async (req, res) => {
     },
   });
 });
-
 
 /** GET SINGLE POST BY ID */
 export const getPostById = asyncHandler(async (req, res) => {
@@ -155,7 +162,7 @@ export const toggleLikePost = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     likesCount: post.likes.length,
-    liked: !alreadyLiked, // ✅ return liked state
+    liked: !alreadyLiked,
     postId: post._id,
   });
 });
@@ -235,7 +242,7 @@ export const deleteComment = asyncHandler(async (req, res) => {
 export const getPostAnalytics = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
   if (!post) {
-    return res.status(404).json({ message: "Post not found" });
+    return res.status(404).json({ success: false, message: "Post not found" });
   }
 
   const analytics = {
@@ -247,7 +254,6 @@ export const getPostAnalytics = asyncHandler(async (req, res) => {
 
   res.json({ success: true, analytics });
 });
-
 
 /** GET USER POSTS */
 export const getUserPosts = asyncHandler(async (req, res) => {
@@ -284,7 +290,14 @@ export const updatePost = asyncHandler(async (req, res) => {
 
   // ✅ Handle image replacement if new file uploaded
   if (req.file) {
-    post.coverImage = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    try {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "blogplatform_uploads",
+      });
+      post.coverImage = result.secure_url;
+    } catch (err) {
+      return res.status(500).json({ success: false, message: "Image upload failed", error: err.message });
+    }
   }
 
   await post.save();
@@ -295,7 +308,6 @@ export const updatePost = asyncHandler(async (req, res) => {
 
   res.json({ success: true, message: "Post updated successfully", post: updatedPost });
 });
-
 /** DELETE POST (soft delete) */
 export const deletePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
