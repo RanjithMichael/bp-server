@@ -25,12 +25,13 @@ export const createPost = asyncHandler(async (req, res) => {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "blogplatform_uploads",
       });
-      post.coverImage = result.secure_url; // Cloudinary CDN URL
+      console.log("Cloudinary upload result:", result);
+      coverImage = result.secure_url; // Cloudinary CDN URL
     } catch (err) {
       return res.status(500).json({ success: false, message: "Image upload failed", error: err.message });
     }
   } else {
-    post.coverImage = "https://via.placeholder.com/600x400?text=No+Image";
+    coverImage = "https://res.cloudinary.com/demo/image/upload/v1690000000/default_cover.jpg"; // Default image URL
   }
 
   const post = await Post.create({
