@@ -1,7 +1,5 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
-import multer from "multer";
-import path from "path";
 
 import {
   createPost,
@@ -19,29 +17,9 @@ import {
 
 import { protect, author } from "../middlewares/authMiddleware.js";
 
+import upload from "../middlewares/uploadMiddleware.js";
+
 const router = express.Router();
-
-// Multer setup for image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) =>
-    cb(null, `${Date.now()}${path.extname(file.originalname)}`),
-});
-
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Invalid file type. Only images are allowed."), false);
-  }
-};
-
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
-});
 
 // Helper: validation middleware for text fields
 const validate = (validations) => async (req, res, next) => {
@@ -65,26 +43,27 @@ router.get("/:id", getPostById);
 
 // PRIVATE ROUTES
 
-// ✅ Create new post (authors/admins only, with image upload)
+// Create new post
 router.post(
   "/",
   protect,
   author,
-  upload.single("image"), // Multer handles file
+  upload.single("image"),
   createPost
 );
 
-// Update post (authors/admins only)
+// Update post
 router.put(
   "/:id",
   protect,
   author,
-  upload.single("image"), // allow updating image too
+  upload.single("image"),
   validate([
     body("title")
       .optional()
       .isLength({ min: 3 })
       .withMessage("Title must be at least 3 characters"),
+
     body("content")
       .optional()
       .notEmpty()
@@ -93,17 +72,21 @@ router.put(
   updatePost
 );
 
-// Delete post (soft delete)
+// Delete post
 router.delete("/:id", protect, author, deletePost);
 
-// Like / Unlike post
+// Like / Unlike
 router.put("/:id/like", protect, toggleLikePost);
 
 // Add comment
 router.post(
   "/:id/comments",
   protect,
-  validate([body("text").notEmpty().withMessage("Comment cannot be empty")]),
+  validate([
+    body("text")
+      .notEmpty()
+      .withMessage("Comment cannot be empty"),
+  ]),
   addComment
 );
 

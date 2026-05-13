@@ -2,48 +2,59 @@ import asyncHandler from "express-async-handler";
 import Post from "../models/Post.js";
 import { v2 as cloudinary } from "cloudinary";
 
-/** CREATE POST */
 export const createPost = asyncHandler(async (req, res) => {
   const { title, content } = req.body;
+
   const categories = req.body["categories[]"] || req.body.categories || [];
   const tags = req.body["tags[]"] || req.body.tags || [];
 
   if (!title || title.trim().length < 5) {
-    return res.status(400).json({ success: false, message: "Title must be at least 5 characters" });
-  }
-  if (!content || content.trim().length < 20) {
-    return res.status(400).json({ success: false, message: "Content must be at least 20 characters" });
-  }
-  if (!req.user?._id) {
-    return res.status(401).json({ success: false, message: "Unauthorized: Token invalid or missing" });
+    return res.status(400).json({
+      success: false,
+      message: "Title must be at least 5 characters",
+    });
   }
 
-  // ✅ Handle image upload to Cloudinary
-  let coverImage;
-  if (req.file) {
-    try {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "blogplatform_uploads",
-      });
-      console.log("Cloudinary upload result:", result);
-      coverImage = result.secure_url; // Cloudinary CDN URL
-    } catch (err) {
-      return res.status(500).json({ success: false, message: "Image upload failed", error: err.message });
-    }
-  } else {
-    coverImage = "https://res.cloudinary.com/demo/image/upload/v1690000000/default_cover.jpg"; // Default image URL
+  if (!content || content.trim().length < 20) {
+    return res.status(400).json({
+      success: false,
+      message: "Content must be at least 20 characters",
+    });
   }
+
+  if (!req.user?._id) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized: Token invalid or missing",
+    });
+  }
+
+  const coverImage = req.file
+    ? req.file.url
+    : "https://res.cloudinary.com/demo/image/upload/v1690000000/default_cover.jpg";
 
   const post = await Post.create({
     title,
     content,
-    categories: Array.isArray(categories) ? categories : [categories],
-    tags: Array.isArray(tags) ? tags : [tags],
+    categories: Array.isArray(categories)
+      ? categories
+      : [categories],
+
+    tags: Array.isArray(tags)
+      ? tags
+      : [tags],
+
     coverImage,
     author: req.user._id,
     status: "published",
     isActive: true,
-    analytics: { views: 0, sharesCount: 0, commentsCount: 0, likesCount: 0 },
+
+    analytics: {
+      views: 0,
+      sharesCount: 0,
+      commentsCount: 0,
+      likesCount: 0,
+    },
   });
 
   const populatedPost = await Post.findById(post._id)
