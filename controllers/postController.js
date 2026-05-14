@@ -188,7 +188,7 @@ export const addComment = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: "Comment cannot be empty" });
   }
 
-  const post = await Post.findOne({ _id: req.params.id, status: { $ne: "removed" }, isActive: true });
+  const post = await Post.findOne({ _id: req.params.id, status: "published", isActive: true });
   if (!post) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
@@ -254,7 +254,7 @@ export const getPostAnalytics = asyncHandler(async (req, res) => {
 export const getUserPosts = asyncHandler(async (req, res) => {
   const posts = await Post.find({
     author: req.params.id,
-    status: { $ne: "removed" },
+    status: "published",
     isActive: true,
   })
     .populate("author", "_id name username profilePic")
