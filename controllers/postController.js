@@ -29,9 +29,25 @@ export const createPost = asyncHandler(async (req, res) => {
     });
   }
 
-  const coverImage = req.file
-    ? req.file.url
-    : "https://res.cloudinary.com/demo/image/upload/v1690000000/default_cover.jpg";
+  let coverImage =
+  "https://res.cloudinary.com/demo/image/upload/v1690000000/default_cover.jpg";
+
+if (req.file) {
+  try {
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "blogplatform_uploads",
+    });
+
+    coverImage = result.secure_url;
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Image upload failed",
+      error: err.message,
+    });
+  }
+}
 
   const post = await Post.create({
     title,
