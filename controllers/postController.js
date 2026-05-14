@@ -9,78 +9,45 @@ export const createPost = asyncHandler(async (req, res) => {
   const tags = req.body["tags[]"] || req.body.tags || [];
 
   if (!title || title.trim().length < 5) {
-    return res.status(400).json({
-      success: false,
-      message: "Title must be at least 5 characters",
-    });
+    return res.status(400).json({ success: false, message: "Title must be at least 5 characters" });
   }
 
   if (!content || content.trim().length < 20) {
-    return res.status(400).json({
-      success: false,
-      message: "Content must be at least 20 characters",
-    });
+    return res.status(400).json({ success: false, message: "Content must be at least 20 characters" });
   }
 
   if (!req.user?._id) {
-    return res.status(401).json({
-      success: false,
-      message: "Unauthorized: Token invalid or missing",
-    });
+    return res.status(401).json({ success: false, message: "Unauthorized: Token invalid or missing" });
   }
 
-  let coverImage =
-  "https://res.cloudinary.com/demo/image/upload/v1690000000/default_cover.jpg";
+  let coverImage = "https://placehold.co/600x400?text=No+Image";
 
-if (req.file) {
-  try {
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "blogplatform_uploads",
-    });
-
-    coverImage = result.secure_url;
-
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Image upload failed",
-      error: err.message,
-    });
+  if (req.file) {
+    try {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "blogplatform_uploads",
+      });
+      coverImage = result.secure_url;
+    } catch (err) {
+      return res.status(500).json({ success: false, message: "Image upload failed", error: err.message });
+    }
   }
-}
 
   const post = await Post.create({
     title,
     content,
-    categories: Array.isArray(categories)
-      ? categories
-      : [categories],
-
-    tags: Array.isArray(tags)
-      ? tags
-      : [tags],
-
+    categories: Array.isArray(categories) ? categories : [categories],
+    tags: Array.isArray(tags) ? tags : [tags],
     coverImage,
-    author: req.user._id,
+    author: req.user._id,   // 🔑 ensures valid ObjectId
     status: "published",
     isActive: true,
-
-    analytics: {
-      views: 0,
-      sharesCount: 0,
-      commentsCount: 0,
-      likesCount: 0,
-    },
+    analytics: { views: 0, sharesCount: 0, commentsCount: 0, likesCount: 0 },
   });
 
-  const populatedPost = await Post.findById(post._id)
-    .populate("author", "_id name username profilePic");
+  const populatedPost = await Post.findById(post._id).populate("author", "_id name username profilePic");
 
-  res.status(201).json({
-    success: true,
-    message: "Post created successfully",
-    post: populatedPost,
-  });
+  res.status(201).json({ success: true, message: "Post created successfully", post: populatedPost });
 });
 
 

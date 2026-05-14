@@ -28,7 +28,7 @@ const postSchema = new mongoose.Schema(
     content: { type: String, required: true, minlength: 20 },
     coverImage: {
       type: String,
-      default: "https://via.placeholder.com/600x400?text=No+Image", // fallback image
+      default: "https://res.cloudinary.com/demo/image/upload/v1690000000/default_cover.jpg", // fallback image
     },
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     categories: { type: [String], default: [] },
