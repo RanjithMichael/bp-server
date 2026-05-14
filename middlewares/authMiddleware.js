@@ -29,6 +29,8 @@ export const protect = asyncHandler(async (req, res, next) => {
     const user = await User.findById(decoded.id).select(
       "_id name email role profilePic bio socialLinks isActive"
     );
+    console.log("Decoded payload:", decoded);
+    console.log("User found:", user?._id);
 
     if (!user) {
       return res.status(401).json({

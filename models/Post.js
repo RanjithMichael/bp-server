@@ -28,7 +28,7 @@ const postSchema = new mongoose.Schema(
     content: { type: String, required: true, minlength: 20 },
     coverImage: {
       type: String,
-      default: "https://res.cloudinary.com/demo/image/upload/v1690000000/default_cover.jpg", // fallback image
+      default: "https://res.cloudinary.com/djle175hb/image/upload/v1778771435/DALL_C2_B7E-2025-02-11-18.59.04-A-modern-and-professional-illustration-depicting-a-computer-programmer-working-on-code.-The-image-should-feature-a-clean-workspace-with-a-laptop-displ_vkl7n2.webp", // fallback image
     },
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     categories: { type: [String], default: [] },

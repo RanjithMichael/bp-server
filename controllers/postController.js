@@ -20,7 +20,7 @@ export const createPost = asyncHandler(async (req, res) => {
     return res.status(401).json({ success: false, message: "Unauthorized: Token invalid or missing" });
   }
 
-  let coverImage = "https://placehold.co/600x400?text=No+Image";
+  let coverImage = undefined
 
   if (req.file) {
     try {
