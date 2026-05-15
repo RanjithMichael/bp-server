@@ -2,6 +2,20 @@ import asyncHandler from "express-async-handler";
 import Post from "../models/Post.js";
 import { v2 as cloudinary } from "cloudinary";
 
+// Map of category-specific default images
+const defaultImages = {
+  datascientist: "https://res.cloudinary.com/djle175hb/image/upload/v1778841309/0_gMvS7ZBIoCX8-Mqe_emfljf.jpg",
+  businessanalyst: "https://res.cloudinary.com/djle175hb/image/upload/v1778841394/https_3A_2F_2Fwww.hbs.edu_2Fctfassets_2Fpublic_2Fimages_2F5zdIhFfQlGehyJLZCR11FB_2FBA_2520Image_sopvyb.webp",
+  computercoding: "https://res.cloudinary.com/djle175hb/image/upload/v1778841533/7200_myugxi.jpg",
+  machinelearning: "https://res.cloudinary.com/djle175hb/image/upload/v1778841707/what-is-machine-learning-1024x683_vbjhb6.png",
+  ai: "https://res.cloudinary.com/djle175hb/image/upload/v1778841815/where-is-ai-used_vbmbey.jpg",
+  htmlandcss: "https://res.cloudinary.com/djle175hb/image/upload/v1778841882/1_lJ32Bl-lHWmNMUSiSq17gQ_erfbwd.png",
+  webdevelopment: "https://res.cloudinary.com/djle175hb/image/upload/v1778842008/1_V-Jp13LvtVc2IiY2fp4qYw_n6djkw.jpg",
+  mobileappdevelopement: "https://res.cloudinary.com/djle175hb/image/upload/v1778842101/7115055_1997_2_ldotl5.jpg",
+  cybersecurity: "https://res.cloudinary.com/djle175hb/image/upload/v1778842174/Cybersecurity_certiprof_t8uqpa.jpg",
+  default: "https://res.cloudinary.com/djle175hb/image/upload/v1778771435/DALL_C2_B7E-2025-02-11-18.59.04-A-modern-and-professional-illustration-depicting-a-computer-programmer-working-on-code.-The-image-should-feature-a-clean-workspace-with-a-laptop-displ_vkl7n2.webp"
+};
+
 export const createPost = asyncHandler(async (req, res) => {
   const { title, content } = req.body;
 
@@ -20,7 +34,7 @@ export const createPost = asyncHandler(async (req, res) => {
     return res.status(401).json({ success: false, message: "Unauthorized: Token invalid or missing" });
   }
 
-  let coverImage = undefined
+  let coverImage;
 
   if (req.file) {
     try {
@@ -31,6 +45,11 @@ export const createPost = asyncHandler(async (req, res) => {
     } catch (err) {
       return res.status(500).json({ success: false, message: "Image upload failed", error: err.message });
     }
+  } else {
+    // ✅ Assign category-specific default if no image uploaded
+    const primaryCategory = Array.isArray(categories) ? categories[0] : categories;
+    coverImage =
+      defaultImages[primaryCategory?.toLowerCase()] || defaultImages.generic;
   }
 
   const post = await Post.create({
@@ -49,7 +68,6 @@ export const createPost = asyncHandler(async (req, res) => {
 
   res.status(201).json({ success: true, message: "Post created successfully", post: populatedPost });
 });
-
 
 /** GET ALL POSTS (paginated + search) */
 export const getAllPosts = asyncHandler(async (req, res) => {
@@ -303,6 +321,7 @@ export const updatePost = asyncHandler(async (req, res) => {
 
   res.json({ success: true, message: "Post updated successfully", post: updatedPost });
 });
+
 /** DELETE POST (soft delete) */
 export const deletePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
