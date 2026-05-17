@@ -4,17 +4,25 @@ import { v2 as cloudinary } from "cloudinary";
 
 // Map of category-specific default images
 const defaultImages = {
-  datascientist: "https://res.cloudinary.com/djle175hb/image/upload/v1778841309/0_gMvS7ZBIoCX8-Mqe_emfljf.jpg",
-  businessanalyst: "https://res.cloudinary.com/djle175hb/image/upload/v1778841394/https_3A_2F_2Fwww.hbs.edu_2Fctfassets_2Fpublic_2Fimages_2F5zdIhFfQlGehyJLZCR11FB_2FBA_2520Image_sopvyb.webp",
-  computercoding: "https://res.cloudinary.com/djle175hb/image/upload/v1778841533/7200_myugxi.jpg",
-  machinelearning: "https://res.cloudinary.com/djle175hb/image/upload/v1778841707/what-is-machine-learning-1024x683_vbjhb6.png",
-  ai: "https://res.cloudinary.com/djle175hb/image/upload/v1778841815/where-is-ai-used_vbmbey.jpg",
-  htmlandcss: "https://res.cloudinary.com/djle175hb/image/upload/v1778841882/1_lJ32Bl-lHWmNMUSiSq17gQ_erfbwd.png",
-  webdevelopment: "https://res.cloudinary.com/djle175hb/image/upload/v1778842008/1_V-Jp13LvtVc2IiY2fp4qYw_n6djkw.jpg",
-  mobileappdevelopement: "https://res.cloudinary.com/djle175hb/image/upload/v1778842101/7115055_1997_2_ldotl5.jpg",
-  cybersecurity: "https://res.cloudinary.com/djle175hb/image/upload/v1778842174/Cybersecurity_certiprof_t8uqpa.jpg",
-  default: "https://res.cloudinary.com/djle175hb/image/upload/v1778771435/DALL_C2_B7E-2025-02-11-18.59.04-A-modern-and-professional-illustration-depicting-a-computer-programmer-working-on-code.-The-image-should-feature-a-clean-workspace-with-a-laptop-displ_vkl7n2.webp"
+ "data scientist": "https://res.cloudinary.com/djle175hb/image/upload/v1778841309/0_gMvS7ZBIoCX8-Mqe_emfljf.jpg",
+  "business analyst": "https://res.cloudinary.com/djle175hb/image/upload/v1778841394/https_3A_2F_2Fwww.hbs.edu_2Fctfassets_2Fpublic_2Fimages_2F5zdIhFfQlGehyJLZCR11FB_2FBA_2520Image_sopvyb.webp",
+  "computer coding": "https://res.cloudinary.com/djle175hb/image/upload/v1778841533/7200_myugxi.jpg",
+  "machine learning": "https://res.cloudinary.com/djle175hb/image/upload/v1778841707/what-is-machine-learning-1024x683_vbjhb6.png",
+  "artificial intelligence": "https://res.cloudinary.com/djle175hb/image/upload/v1778841815/where-is-ai-used_vbmbey.jpg",
+  "html & css":"https://res.cloudinary.com/djle175hb/image/upload/v1778841882/1_lJ32Bl-lHWmNMUSiSq17gQ_erfbwd.png",
+  "web development":"https://res.cloudinary.com/djle175hb/image/upload/v1778842008/1_V-Jp13LvtVc2IiY2fp4qYw_n6djkw.jpg",
+  "mobile app development":"https://res.cloudinary.com/djle175hb/image/upload/v1778842101/7115055_1997_2_ldotl5.jpg",
+  "cybersecurity":"https://res.cloudinary.com/djle175hb/image/upload/v1778842174/Cybersecurity_certiprof_t8uqpa.jpg",
+  "generic": "https://res.cloudinary.com/djle175hb/image/upload/v1778771435/DALL_C2_B7E-2025-02-11-18.59.04-A-modern-and-professional-illustration-depicting-a-computer-programmer-working-on-code.-The-image-should-feature-a-clean-workspace-with-a-laptop-displ_vkl7n2.webp"
 };
+
+// helper to generate slug from title
+const makeSlug = (title) =>
+  title
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")        // spaces → hyphens
+    .replace(/[^a-z0-9\-]/g, ""); // remove non-alphanumeric
 
 export const createPost = asyncHandler(async (req, res) => {
   const { title, content } = req.body;
@@ -35,7 +43,6 @@ export const createPost = asyncHandler(async (req, res) => {
   }
 
   let coverImage;
-
   if (req.file) {
     try {
       const result = await cloudinary.uploader.upload(req.file.path, {
@@ -46,19 +53,21 @@ export const createPost = asyncHandler(async (req, res) => {
       return res.status(500).json({ success: false, message: "Image upload failed", error: err.message });
     }
   } else {
-    // ✅ Assign category-specific default if no image uploaded
     const primaryCategory = Array.isArray(categories) ? categories[0] : categories;
     coverImage =
       defaultImages[primaryCategory?.toLowerCase()] || defaultImages.generic;
   }
 
+  const slug = makeSlug(title);
+
   const post = await Post.create({
     title,
+    slug, // 🔑 unique slug stored in DB
     content,
     categories: Array.isArray(categories) ? categories : [categories],
     tags: Array.isArray(tags) ? tags : [tags],
     coverImage,
-    author: req.user._id,   // 🔑 ensures valid ObjectId
+    author: req.user._id,
     status: "published",
     isActive: true,
     analytics: { views: 0, sharesCount: 0, commentsCount: 0, likesCount: 0 },
@@ -68,6 +77,7 @@ export const createPost = asyncHandler(async (req, res) => {
 
   res.status(201).json({ success: true, message: "Post created successfully", post: populatedPost });
 });
+
 
 /** GET ALL POSTS (paginated + search) */
 export const getAllPosts = asyncHandler(async (req, res) => {
@@ -183,21 +193,16 @@ export const toggleLikePost = asyncHandler(async (req, res) => {
 /** INCREMENT SHARE */
 export const incrementSharePost = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
-  if (!post || !post.isActive) {
-    return res.status(404).json({ success: false, message: "Post not found or removed" });
+  if (!post) {
+    return res.status(404).json({ success: false, message: "Post not found" });
   }
 
-  post.analytics = post.analytics || {};
   post.analytics.sharesCount = (post.analytics.sharesCount || 0) + 1;
-
   await post.save();
 
-  res.status(200).json({
-    success: true,
-    message: "Post shared successfully",
-    sharesCount: post.analytics.sharesCount,
-  });
+  res.json({ success: true, sharesCount: post.analytics.sharesCount });
 });
+
 
 /** ADD COMMENT */
 export const addComment = asyncHandler(async (req, res) => {

@@ -24,11 +24,11 @@ const postSchema = new mongoose.Schema(
       minlength: 3,
       maxlength: 150,
     },
-    slug: { type: String, unique: true, index: true },
+    slug: { type: String, required: true, unique: true, index: true }, // ✅ enforce slug
     content: { type: String, required: true, minlength: 20 },
     coverImage: {
       type: String,
-      required: false, // ✅ optional, controller assigns fallback
+      required: false,
     },
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     categories: { type: [String], default: [] },
@@ -56,13 +56,18 @@ const postSchema = new mongoose.Schema(
 
 // Slug generator
 postSchema.pre("save", async function (next) {
-  if (!this.title || !this.isModified("title")) return next();
+  if (!this.title) return next();
+  if (!this.isModified("title") && this.slug) return next();
+
   const baseSlug = slugify(this.title, { lower: true, strict: true });
   let slug = baseSlug;
   let count = 1;
+
+  // ensure uniqueness
   while (await mongoose.models.Post.exists({ slug, _id: { $ne: this._id } })) {
     slug = `${baseSlug}-${count++}`;
   }
+
   this.slug = slug;
   next();
 });

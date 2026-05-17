@@ -13,6 +13,7 @@ import {
   getUserPosts,
   updatePost,
   deletePost,
+  incrementSharePost,
 } from "../controllers/postController.js";
 
 import { protect, author } from "../middlewares/authMiddleware.js";
@@ -77,6 +78,9 @@ router.delete("/:id", protect, author, deletePost);
 
 // Like / Unlike
 router.put("/:id/like", protect, toggleLikePost);
+
+// Share post
+router.put("/:id/share", protect, incrementSharePost);
 
 // Add comment
 router.post(
