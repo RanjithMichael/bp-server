@@ -191,10 +191,14 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
   if (req.body.bio !== undefined) user.bio = req.body.bio;
   if (req.body.socialLinks !== undefined) user.socialLinks = req.body.socialLinks;
 
+  // ✅ Handle profilePic upload
   if (req.file) {
-    user.profilePic = `/uploads/${req.file.filename}`;
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "profile_pics",
+    });
+    user.profilePic = result.secure_url; // ✅ Cloudinary URL
   } else if (req.body.profilePic !== undefined) {
-    user.profilePic = req.body.profilePic;
+    user.profilePic = req.body.profilePic; // fallback if user pastes a URL
   }
 
   const updatedUser = await user.save();
