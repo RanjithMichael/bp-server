@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema(
     },
     profilePic: {
       type: String,
-      default: "/uploads/default.png", // placeholder image
+      default: "https://res.cloudinary.com/djle175hb/image/upload/v1779124369/isolated-young-handsome-man-different-poses-white-background-illustration_632498-859_owdpqp.jpg",
     },
     socialLinks: {
       type: Map,
