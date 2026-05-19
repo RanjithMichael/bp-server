@@ -73,6 +73,10 @@ router.put(
   updatePost
 );
 
+// Update post by ID
+router.put("/:id", protect, updatePost);
+
+
 // Delete post
 router.delete("/:id", protect, author, deletePost);
 
