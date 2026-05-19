@@ -193,15 +193,14 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
 
   // ✅ Handle profilePic upload
   if (req.file) {
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "profile_pics",
-    });
-    user.profilePic = result.secure_url; // ✅ Cloudinary URL
-  } else if (req.body.profilePic !== undefined) {
-    user.profilePic = req.body.profilePic; // fallback if user pastes a URL
-  }
-
-  const updatedUser = await user.save();
+  // multer upload flow
+  const result = await cloudinary.uploader.upload(req.file.path, { folder: "profile_pics" });
+  user.profilePic = result.secure_url;
+} else if (req.body.profilePic) {
+  // Cloudinary widget flow
+  user.profilePic = req.body.profilePic;
+}
+const updatedUser = await user.save();
 
   res.json({
     success: true,
