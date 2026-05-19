@@ -17,7 +17,6 @@ import {
 } from "../controllers/postController.js";
 
 import { protect, author } from "../middlewares/authMiddleware.js";
-
 import upload from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
@@ -55,7 +54,7 @@ router.post(
 
 // Update post
 router.put(
-  "/:id",
+  "/slug/:slug",
   protect,
   author,
   upload.single("image"),
@@ -64,7 +63,6 @@ router.put(
       .optional()
       .isLength({ min: 3 })
       .withMessage("Title must be at least 3 characters"),
-
     body("content")
       .optional()
       .notEmpty()
@@ -73,12 +71,8 @@ router.put(
   updatePost
 );
 
-// Update post by ID
-router.put("/:id", protect, updatePost);
-
-
-// Delete post
-router.delete("/:id", protect, author, deletePost);
+// Delete post by slug
+router.delete("/slug/:slug", protect, author, deletePost);
 
 // Like / Unlike
 router.put("/:id/like", protect, toggleLikePost);
