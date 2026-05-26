@@ -12,7 +12,7 @@ import {
   getPostAnalytics,
   getUserPosts,
   updatePostBySlug,
-  deletePostBySlug,
+  deletePost,
   incrementSharePost,
 } from "../controllers/postController.js";
 
@@ -70,9 +70,11 @@ router.put(
   ]),
   updatePostBySlug
 );
+// Delete by id
+router.delete("/:id", protect, author, deletePost);
 
 // Delete post by slug
-router.delete("/slug/:slug", protect, author, deletePostBySlug);
+router.delete("/slug/:slug", protect, author, deletePost);
 
 // Like / Unlike
 router.put("/:id/like", protect, toggleLikePost);

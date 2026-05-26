@@ -328,23 +328,30 @@ export const updatePostBySlug = asyncHandler(async (req, res) => {
   res.json({ success: true, message: "Post updated successfully", post: updatedPost });
 });
 
-/** DELETE POST (by slug) */
-export const deletePostBySlug = asyncHandler(async (req, res) => {
-  const { slug } = req.params;
-  const post = await Post.findOne({ slug });
+/** DELETE POST (by id or slug) */
+export const deletePost = asyncHandler(async (req, res) => {
+  const { id, slug } = req.params;
+
+  // Find post either by id or slug
+  const post = id
+    ? await Post.findById(id)
+    : await Post.findOne({ slug });
 
   if (!post || post.isDeleted || post.status === "removed") {
     return res.status(404).json({ success: false, message: "Post not found or already removed" });
   }
 
+  // Authorization check
   if (post.author.toString() !== req.user._id.toString() && req.user.role !== "admin") {
     return res.status(403).json({ success: false, message: "Not authorized to delete this post" });
   }
 
+  // Soft delete
   post.isActive = false;
   post.status = "removed";
   await post.save();
 
   res.json({ success: true, message: "Post removed successfully" });
 });
+
 
