@@ -286,11 +286,12 @@ export const getUserPosts = asyncHandler(async (req, res) => {
   res.json({ success: true, posts });
 });
 
-/** UPDATE POST */
-export const updatePost = asyncHandler(async (req, res) => {
+/** UPDATE POST (by slug) */
+export const updatePostBySlug = asyncHandler(async (req, res) => {
+  const { slug } = req.params;
   const { title, content, categories, tags, status } = req.body;
-  const post = await Post.findById(req.params.id);
 
+  const post = await Post.findOne({ slug });
   if (!post || !post.isActive) {
     return res.status(404).json({ success: false, message: "Post not found or removed" });
   }
@@ -299,14 +300,14 @@ export const updatePost = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: "Not authorized to update this post" });
   }
 
-  // ✅ Update fields
+  // Update fields
   post.title = title || post.title;
   post.content = content || post.content;
   post.categories = categories || post.categories;
   post.tags = tags || post.tags;
   post.status = status || post.status;
 
-  // ✅ Handle image replacement if new file uploaded
+  // Handle image replacement
   if (req.file) {
     try {
       const result = await cloudinary.uploader.upload(req.file.path, {
@@ -327,9 +328,10 @@ export const updatePost = asyncHandler(async (req, res) => {
   res.json({ success: true, message: "Post updated successfully", post: updatedPost });
 });
 
-/** DELETE POST (soft delete) */
-export const deletePost = asyncHandler(async (req, res) => {
-  const post = await Post.findById(req.params.id);
+/** DELETE POST (by slug) */
+export const deletePostBySlug = asyncHandler(async (req, res) => {
+  const { slug } = req.params;
+  const post = await Post.findOne({ slug });
 
   if (!post || post.isDeleted || post.status === "removed") {
     return res.status(404).json({ success: false, message: "Post not found or already removed" });
@@ -345,3 +347,4 @@ export const deletePost = asyncHandler(async (req, res) => {
 
   res.json({ success: true, message: "Post removed successfully" });
 });
+

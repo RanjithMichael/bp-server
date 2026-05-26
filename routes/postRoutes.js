@@ -11,8 +11,8 @@ import {
   deleteComment,
   getPostAnalytics,
   getUserPosts,
-  updatePost,
-  deletePost,
+  updatePostBySlug,
+  deletePostBySlug,
   incrementSharePost,
 } from "../controllers/postController.js";
 
@@ -52,7 +52,7 @@ router.post(
   createPost
 );
 
-// Update post
+// Update post by slug
 router.put(
   "/slug/:slug",
   protect,
@@ -68,11 +68,11 @@ router.put(
       .notEmpty()
       .withMessage("Content cannot be empty"),
   ]),
-  updatePost
+  updatePostBySlug
 );
 
 // Delete post by slug
-router.delete("/slug/:slug", protect, author, deletePost);
+router.delete("/slug/:slug", protect, author, deletePostBySlug);
 
 // Like / Unlike
 router.put("/:id/like", protect, toggleLikePost);
