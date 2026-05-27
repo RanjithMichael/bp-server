@@ -350,6 +350,11 @@ export const deletePost = asyncHandler(async (req, res) => {
       message: "Post already removed",
     });
   }
+  console.log("Delete attempt:", {
+    user: req.user._id,
+    role: req.user.role,
+    postAuthor: post.author,
+  });
 
   // Authorization check
   if (
