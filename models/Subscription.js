@@ -22,13 +22,13 @@ const subscriptionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Ensure a user can’t subscribe to the same author twice
+// ✅ Ensure a user can’t subscribe to the same author twice
 subscriptionSchema.index(
   { user: 1, author: 1 },
   { unique: true, sparse: true }
 );
 
-// Ensure a user can’t subscribe to the same category twice
+// ✅ Ensure a user can’t subscribe to the same category twice
 subscriptionSchema.index(
   { user: 1, category: 1 },
   { unique: true, sparse: true }
