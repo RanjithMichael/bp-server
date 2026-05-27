@@ -333,17 +333,33 @@ export const deletePost = asyncHandler(async (req, res) => {
   const { id, slug } = req.params;
 
   // Find post either by id or slug
-  const post = id
-    ? await Post.findById(id)
-    : await Post.findOne({ slug });
+  const post = slug
+    ? await Post.findOne({ slug })
+    : await Post.findById(id);
 
-  if (!post || post.isDeleted || post.status === "removed") {
-    return res.status(404).json({ success: false, message: "Post not found or already removed" });
+  if (!post) {
+    return res.status(404).json({
+      success: false,
+      message: "Post not found",
+    });
+  }
+
+  if (post.isDeleted || post.status === "removed") {
+    return res.status(410).json({
+      success: false,
+      message: "Post already removed",
+    });
   }
 
   // Authorization check
-  if (post.author.toString() !== req.user._id.toString() && req.user.role !== "admin") {
-    return res.status(403).json({ success: false, message: "Not authorized to delete this post" });
+  if (
+    post.author.toString() !== req.user._id.toString() &&
+    req.user.role !== "admin"
+  ) {
+    return res.status(403).json({
+      success: false,
+      message: "You are not authorized to delete this post",
+    });
   }
 
   // Soft delete
@@ -351,7 +367,8 @@ export const deletePost = asyncHandler(async (req, res) => {
   post.status = "removed";
   await post.save();
 
-  res.json({ success: true, message: "Post removed successfully" });
+  res.json({
+    success: true,
+    message: "Post deleted successfully",
+  });
 });
-
-
