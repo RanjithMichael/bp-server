@@ -16,6 +16,14 @@ const createSubscription = asyncHandler(async (req, res) => {
     });
   }
 
+  //Prevent self-subscription
+  if (authorId && authorId.toString() === req.user._id.toString()) {
+    return res.status(400).json({
+      success: false,
+      message: "You cannot subscribe to yourself",
+    });
+  }
+
   const normalizedCategory = category ? category.trim().toLowerCase() : null;
 
   // Prevent duplicate subscriptions
@@ -142,6 +150,14 @@ const getSubscriptionStatus = asyncHandler(async (req, res) => {
  */
 const subscribeAuthor = asyncHandler(async (req, res) => {
   const { authorId } = req.params;
+
+  //Prevent self-subscription
+  if (authorId.toString() === req.user._id.toString()) {
+    return res.status(400).json({
+      success: false,
+      message: "You cannot subscribe to yourself",
+    });
+  }
 
   const existing = await Subscription.findOne({
     user: req.user._id,
